@@ -20,6 +20,7 @@ def reset_database(tmp_path, monkeypatch):
     settings = get_settings()
     monkeypatch.setattr(settings, "upload_dir", str(tmp_path / "uploads"))
     monkeypatch.setattr(settings, "openai_api_key", "your_openai_api_key_here")
+    monkeypatch.setattr(settings, "gemini_api_key", "")
     yield
     Base.metadata.drop_all(bind=engine)
 
@@ -296,13 +297,18 @@ def test_multilingual_telugu_hindi_english():
 def test_production_database_url_normalization():
     settings = get_settings()
     orig = settings.database_url
+    orig_pg = settings.postgres_url
     try:
         settings.database_url = "postgres://user:pass@host:5432/dbname"
         assert settings.normalized_database_url == "postgresql+psycopg://user:pass@host:5432/dbname"
         settings.database_url = "postgresql://user:pass@host:5432/dbname"
         assert settings.normalized_database_url == "postgresql+psycopg://user:pass@host:5432/dbname"
+        settings.database_url = "sqlite:////tmp/test.db"
+        settings.postgres_url = "postgres://neon:pass@ep-cool.aws.neon.tech/neondb?sslmode=require"
+        assert settings.normalized_database_url == "postgresql+psycopg://neon:pass@ep-cool.aws.neon.tech/neondb?sslmode=require"
     finally:
         settings.database_url = orig
+        settings.postgres_url = orig_pg
 
 
 def test_gemini_api_key_autodetection_and_sanitization():

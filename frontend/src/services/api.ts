@@ -15,7 +15,15 @@ import type {
 } from "@/types/api";
 
 const TOKEN_STORAGE_KEY = "ai_med_assistant_token";
+export const AUTH_EXPIRED_EVENT = "ai-med-auth-expired";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+
+function notifyUnauthorized(status: number, path: string): void {
+  if (status === 401 && !path.includes("/api/auth/login") && !path.includes("/api/auth/register")) {
+    setAuthToken(null);
+    window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+  }
+}
 
 export function buildApiUrl(path: string): string {
   if (/^https?:\/\//i.test(path)) return path;
@@ -67,9 +75,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     } catch {
       // keep default detail
     }
-    if (res.status === 401 && token && !path.includes("/api/auth/login")) {
-      setAuthToken(null);
-    }
+    notifyUnauthorized(res.status, path);
     throw new ApiError(detail, res.status);
   }
 
@@ -99,6 +105,7 @@ function uploadWithProgress<T>(
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve(parsed as T);
         } else {
+          notifyUnauthorized(xhr.status, path);
           reject(new ApiError(parsed?.detail || `Upload failed (${xhr.status})`, xhr.status));
         }
       } catch {
@@ -116,6 +123,7 @@ export async function fetchProtectedBlob(path: string): Promise<Blob> {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) {
+    notifyUnauthorized(res.status, path);
     throw new ApiError("Unable to retrieve protected file.", res.status);
   }
   return await res.blob();

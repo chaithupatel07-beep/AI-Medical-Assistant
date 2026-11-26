@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { api, getAuthToken, setAuthToken } from "@/services/api";
+import { api, AUTH_EXPIRED_EVENT, getAuthToken, setAuthToken } from "@/services/api";
 import type { User } from "@/types/api";
 
 interface AuthContextValue {
@@ -39,6 +39,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void refreshUser();
   }, [refreshUser]);
+
+  useEffect(() => {
+    const onExpired = () => setUser(null);
+    window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
+  }, []);
 
   const login = async (email: string, password: string) => {
     const res = await api.login({ email, password });
