@@ -119,11 +119,11 @@ npm run build
 
 This repository is configured so **every part of the application deploys together** (React SPA + FastAPI API + PostgreSQL + Tesseract OCR + AI integration):
 
-### Option A: Single-Project Full-Stack Deploy on Vercel (`vercel.json` + `api/index.py`)
+### Option A: Single-Project Full-Stack Deploy on Vercel (`vercel.json` Services)
 
 When importing this repository on **Vercel**:
-1. Keep **Root Directory** at the repository root (`.`) — do **not** set it to `backend` or `frontend` alone, or only half the project will deploy.
-2. Set **Framework Preset** to **Other** (Vercel will automatically use root `vercel.json`, which builds `frontend/dist` AND deploys the FastAPI backend via `api/index.py` under `/api/*`).
+1. Keep **Root Directory** at `./` (repository root) and **Application Preset** as **Services**.
+2. Vercel reads the root `vercel.json` (`services.frontend` + `services.backend` + `rewrites`) and deploys **both** the React Vite frontend (`/`) and the FastAPI backend (`/api/*`) together as a single unified project.
 3. Add **Environment Variables** in Vercel:
    - `DATABASE_URL` = your Supabase or Neon PostgreSQL connection string (recommended for persistent storage; otherwise falls back to ephemeral `/tmp` SQLite)
    - `JWT_SECRET_KEY` = a strong random 32+ char secret
