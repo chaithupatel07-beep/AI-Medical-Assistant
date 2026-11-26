@@ -131,8 +131,8 @@ def get_dashboard_overview(
         ],
         "ai_status": {
             "configured": settings.is_ai_configured,
-            "provider": settings.ai_provider,
-            "chat_model": settings.openai_chat_model,
-            "vision_model": settings.openai_vision_model,
+            "provider": settings.effective_provider,
+            "chat_model": settings.effective_chat_model,
+            "vision_model": settings.effective_vision_model,
         },
     }

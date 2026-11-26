@@ -305,3 +305,34 @@ def test_production_database_url_normalization():
         settings.database_url = orig
 
 
+def test_gemini_api_key_autodetection_and_sanitization():
+    settings = get_settings()
+    orig_oai = settings.openai_api_key
+    orig_gem = settings.gemini_api_key
+    orig_prov = settings.ai_provider
+    orig_base = settings.openai_base_url
+    orig_chat = settings.openai_chat_model
+    orig_vis = settings.openai_vision_model
+    try:
+        settings.openai_api_key = ""
+        settings.gemini_api_key = ' "AIzaSyTestGeminiKey123" '
+        settings.ai_provider = "openai"
+        settings.openai_base_url = "https://api.openai.com/v1"
+        settings.openai_chat_model = "gpt-4o-mini"
+        settings.openai_vision_model = "gpt-4o-mini"
+        assert settings.is_ai_configured is True
+        assert settings.effective_api_key == "AIzaSyTestGeminiKey123"
+        assert settings.effective_provider == "gemini"
+        assert settings.effective_base_url == "https://generativelanguage.googleapis.com/v1beta/openai/"
+        assert settings.effective_chat_model == "gemini-2.5-flash"
+        assert settings.effective_vision_model == "gemini-2.5-flash"
+    finally:
+        settings.openai_api_key = orig_oai
+        settings.gemini_api_key = orig_gem
+        settings.ai_provider = orig_prov
+        settings.openai_base_url = orig_base
+        settings.openai_chat_model = orig_chat
+        settings.openai_vision_model = orig_vis
+
+
+

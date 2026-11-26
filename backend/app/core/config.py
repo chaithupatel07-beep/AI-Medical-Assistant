@@ -27,6 +27,7 @@ class Settings(BaseSettings):
 
     ai_provider: str = "openai"
     openai_api_key: str = ""
+    gemini_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
     openai_chat_model: str = "gpt-4o-mini"
     openai_vision_model: str = "gpt-4o-mini"
@@ -63,10 +64,61 @@ class Settings(BaseSettings):
     def max_upload_size_bytes(self) -> int:
         return self.max_upload_size_mb * 1024 * 1024
 
+    @staticmethod
+    def _clean_key(raw: str) -> str:
+        cleaned = (raw or "").strip().strip('"').strip("'").strip()
+        if not cleaned or cleaned.startswith("your_"):
+            return ""
+        return cleaned
+
+    @property
+    def effective_api_key(self) -> str:
+        return self._clean_key(self.openai_api_key) or self._clean_key(self.gemini_api_key)
+
+    @property
+    def _uses_gemini_key(self) -> bool:
+        key = self.effective_api_key
+        if not key:
+            return self.ai_provider.lower() == "gemini"
+        if self._clean_key(self.gemini_api_key) and not self._clean_key(self.openai_api_key):
+            return True
+        if key.startswith(("AIza", "AQ.")):
+            return True
+        return (
+            self.ai_provider.lower() == "gemini"
+            or "generativelanguage.googleapis.com" in self.openai_base_url
+        )
+
+    @property
+    def effective_provider(self) -> str:
+        if self._uses_gemini_key:
+            return "gemini"
+        return self.ai_provider
+
+    @property
+    def effective_base_url(self) -> str:
+        base = (self.openai_base_url or "").strip()
+        if self._uses_gemini_key and (not base or base == "https://api.openai.com/v1"):
+            return "https://generativelanguage.googleapis.com/v1beta/openai/"
+        return base or "https://api.openai.com/v1"
+
+    @property
+    def effective_chat_model(self) -> str:
+        model = (self.openai_chat_model or "").strip()
+        if self._uses_gemini_key and (not model or model == "gpt-4o-mini"):
+            return "gemini-2.5-flash"
+        return model or "gpt-4o-mini"
+
+    @property
+    def effective_vision_model(self) -> str:
+        model = (self.openai_vision_model or "").strip()
+        if self._uses_gemini_key and (not model or model == "gpt-4o-mini"):
+            return "gemini-2.5-flash"
+        return model or "gpt-4o-mini"
+
     @property
     def is_ai_configured(self) -> bool:
-        key = (self.openai_api_key or "").strip()
-        return bool(key) and not key.startswith("your_")
+        return bool(self.effective_api_key)
 
     @property
     def upload_path(self) -> Path:

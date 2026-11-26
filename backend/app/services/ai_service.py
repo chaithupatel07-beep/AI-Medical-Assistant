@@ -116,12 +116,12 @@ def _get_client() -> AsyncOpenAI:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
                 "AI service is not configured on the server. "
-                "Set OPENAI_API_KEY in backend/.env and restart the FastAPI server."
+                "Set OPENAI_API_KEY or GEMINI_API_KEY in your server environment variables (or backend/.env) and redeploy/restart."
             ),
         )
     return AsyncOpenAI(
-        api_key=settings.openai_api_key,
-        base_url=settings.openai_base_url,
+        api_key=settings.effective_api_key,
+        base_url=settings.effective_base_url,
     )
 
 
@@ -161,7 +161,10 @@ def _parse_json_response(raw_content: str) -> Dict[str, Any]:
 
 
 def _provider_extra_kwargs(settings: Any) -> Dict[str, Any]:
-    if settings.ai_provider.lower() == "gemini" or "generativelanguage.googleapis.com" in settings.openai_base_url:
+    if (
+        settings.effective_provider.lower() == "gemini"
+        or "generativelanguage.googleapis.com" in settings.effective_base_url
+    ):
         return {"reasoning_effort": "low"}
     return {}
 
@@ -195,7 +198,7 @@ async def generate_chat_reply(
 
     try:
         response = await client.chat.completions.create(
-            model=settings.openai_chat_model,
+            model=settings.effective_chat_model,
             messages=messages,  # type: ignore[arg-type]
             temperature=0.2,
             max_tokens=2048,
@@ -207,7 +210,7 @@ async def generate_chat_reply(
         emergency_text = get_disclaimer("emergency", lang)
         if emergency_detected and "112" not in content and "emergency" not in content.lower():
             content = f"**{emergency_text}**\n\n{content}"
-        return content, settings.openai_chat_model
+        return content, settings.effective_chat_model
     except HTTPException:
         raise
     except Exception as exc:
@@ -244,7 +247,7 @@ async def generate_symptom_guidance(
 
     try:
         response = await client.chat.completions.create(
-            model=settings.openai_chat_model,
+            model=settings.effective_chat_model,
             response_format={"type": "json_object"},
             messages=[
                 {
@@ -284,7 +287,7 @@ async def generate_symptom_guidance(
         if emergency_detected:
             parsed["emergency_banner"] = get_disclaimer("emergency", lang)
         parsed["disclaimer"] = get_disclaimer("general", lang)
-        return parsed, settings.openai_chat_model
+        return parsed, settings.effective_chat_model
     except HTTPException:
         raise
     except Exception as exc:
@@ -310,7 +313,7 @@ async def generate_report_summary(
 
     try:
         response = await client.chat.completions.create(
-            model=settings.openai_chat_model,
+            model=settings.effective_chat_model,
             response_format={"type": "json_object"},
             messages=[
                 {
@@ -369,7 +372,7 @@ async def generate_report_summary(
             val = parsed.get(list_key)
             parsed[list_key] = [str(x) for x in val] if isinstance(val, list) else []
         parsed["disclaimer"] = get_disclaimer("report", lang)
-        return parsed, settings.openai_chat_model
+        return parsed, settings.effective_chat_model
     except HTTPException:
         raise
     except Exception as exc:
@@ -392,7 +395,7 @@ async def analyze_medical_image_with_vision(
 
     try:
         response = await client.chat.completions.create(
-            model=settings.openai_vision_model,
+            model=settings.effective_vision_model,
             response_format={"type": "json_object"},
             temperature=0.2,
             max_tokens=2048,
@@ -429,7 +432,7 @@ async def analyze_medical_image_with_vision(
         parsed["limitations"] = str(parsed.get("limitations") or "")
         parsed["recommended_next_steps"] = str(parsed.get("recommended_next_steps") or "")
         parsed["disclaimer"] = get_disclaimer("image", lang)
-        return parsed, settings.openai_vision_model
+        return parsed, settings.effective_vision_model
     except HTTPException:
         raise
     except Exception as exc:

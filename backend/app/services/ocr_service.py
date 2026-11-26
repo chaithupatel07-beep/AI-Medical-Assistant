@@ -40,18 +40,21 @@ async def _extract_image_text_vision_ai(raw_bytes: bytes, mime_type: str) -> str
     settings = get_settings()
     if not settings.is_ai_configured:
         return ""
-    client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
+    client = AsyncOpenAI(
+        api_key=settings.effective_api_key,
+        base_url=settings.effective_base_url,
+    )
     b64 = base64.b64encode(raw_bytes).decode("utf-8")
     data_url = f"data:{mime_type};base64,{b64}"
     try:
         extra_kwargs = (
             {"reasoning_effort": "low"}
-            if settings.ai_provider.lower() == "gemini"
-            or "generativelanguage.googleapis.com" in settings.openai_base_url
+            if settings.effective_provider.lower() == "gemini"
+            or "generativelanguage.googleapis.com" in settings.effective_base_url
             else {}
         )
         response = await client.chat.completions.create(
-            model=settings.openai_vision_model,
+            model=settings.effective_vision_model,
             temperature=0.0,
             max_tokens=2500,
             **extra_kwargs,
