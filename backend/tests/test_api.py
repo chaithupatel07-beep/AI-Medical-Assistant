@@ -272,3 +272,23 @@ def test_image_upload_and_delete():
     delete = client.delete(f"/api/images/{image_id}", headers=alice_h)
     assert delete.status_code == 200
     assert client.get(f"/api/images/{image_id}", headers=alice_h).status_code == 404
+
+
+def test_multilingual_telugu_hindi_english():
+    for code, expected_cat in [("en", "Nutrition"), ("te", "పోషకాహారం"), ("hi", "पोषण")]:
+        lib = client.get("/api/library/articles", params={"lang": code, "category": "Nutrition"})
+        assert lib.status_code == 200
+        data = lib.json()
+        assert data["category_labels"]["Nutrition"] == expected_cat
+        assert data["total"] >= 1
+
+        qs = client.get("/api/chat/suggested-questions", params={"lang": code})
+        assert qs.status_code == 200
+        assert len(qs.json()["questions"]) >= 5
+
+    user = _register_user("lang_user@example.com", "Language User")
+    h = _auth_header(user["access_token"])
+    prof = client.put("/api/users/profile", headers=h, json={"preferred_language": "te"})
+    assert prof.status_code == 200
+    assert prof.json()["profile"]["preferred_language"] == "te"
+

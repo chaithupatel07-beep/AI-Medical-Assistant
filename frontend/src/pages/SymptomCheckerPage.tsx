@@ -8,11 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useLanguage } from "@/hooks/useLanguage";
 import { api } from "@/services/api";
 import type { ActivityItem, SymptomCheckResult } from "@/types/api";
 import { formatDateTime } from "@/utils/format";
 
 export function SymptomCheckerPage() {
+  const { language, t } = useLanguage();
   const [age, setAge] = useState("28");
   const [gender, setGender] = useState("");
   const [mainSymptom, setMainSymptom] = useState("");
@@ -67,6 +69,7 @@ export function SymptomCheckerPage() {
         severity,
         additional_symptoms: additionalSymptoms.trim() || undefined,
         relevant_context: relevantContext.trim() || undefined,
+        language,
       });
       setResult(res);
       loadHistoryAndHealth();
@@ -97,12 +100,9 @@ export function SymptomCheckerPage() {
     <div className="space-y-6">
       <div>
         <h1 className="flex items-center gap-2.5 text-2xl font-bold text-slate-900">
-          <Stethoscope className="h-6 w-6 text-medical-blue" /> Symptom Information Checker
+          <Stethoscope className="h-6 w-6 text-medical-blue" /> {t("sym.title")}
         </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Structured educational guidance to help you understand common possibilities and prepare
-          for a medical consultation—never a diagnosis.
-        </p>
+        <p className="mt-1 text-sm text-slate-600">{t("sym.sub")}</p>
       </div>
 
       <AiConfigNotice configured={aiConfigured} />
@@ -110,8 +110,8 @@ export function SymptomCheckerPage() {
       <div className="grid gap-6 lg:grid-cols-12">
         <Card className="lg:col-span-5">
           <CardHeader>
-            <CardTitle>Symptom Details</CardTitle>
-            <CardDescription>Fill in the fields below to generate educational context.</CardDescription>
+            <CardTitle>{t("sym.details")}</CardTitle>
+            <CardDescription>{t("sym.detailsSub")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -123,7 +123,7 @@ export function SymptomCheckerPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="sym-age">Age *</Label>
+                  <Label htmlFor="sym-age">{t("sym.age")}</Label>
                   <Input
                     id="sym-age"
                     type="number"
@@ -135,10 +135,9 @@ export function SymptomCheckerPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="sym-gender">Gender (optional)</Label>
+                  <Label htmlFor="sym-gender">{t("sym.gender")}</Label>
                   <Input
                     id="sym-gender"
-                    placeholder="e.g., Female, Male"
                     value={gender}
                     onChange={(e) => setGender(e.target.value)}
                   />
@@ -146,10 +145,9 @@ export function SymptomCheckerPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="sym-main">Main Symptom *</Label>
+                <Label htmlFor="sym-main">{t("sym.main")}</Label>
                 <Input
                   id="sym-main"
-                  placeholder="e.g., Persistent dry cough, headache"
                   value={mainSymptom}
                   onChange={(e) => setMainSymptom(e.target.value)}
                   required
@@ -158,47 +156,44 @@ export function SymptomCheckerPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="sym-duration">Duration *</Label>
+                  <Label htmlFor="sym-duration">{t("sym.duration")}</Label>
                   <Input
                     id="sym-duration"
-                    placeholder="e.g., 3 days, 2 weeks"
                     value={duration}
                     onChange={(e) => setDuration(e.target.value)}
                     required
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="sym-severity">Severity *</Label>
+                  <Label htmlFor="sym-severity">{t("sym.severity")}</Label>
                   <select
                     id="sym-severity"
                     value={severity}
                     onChange={(e) => setSeverity(e.target.value as "mild" | "moderate" | "severe")}
                     className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical-blue"
                   >
-                    <option value="mild">Mild</option>
-                    <option value="moderate">Moderate</option>
-                    <option value="severe">Severe</option>
+                    <option value="mild">{t("sym.mild")}</option>
+                    <option value="moderate">{t("sym.moderate")}</option>
+                    <option value="severe">{t("sym.severe")}</option>
                   </select>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="sym-add">Additional Symptoms</Label>
+                <Label htmlFor="sym-add">{t("sym.additional")}</Label>
                 <Textarea
                   id="sym-add"
                   rows={2}
-                  placeholder="e.g., Mild fatigue, low-grade fever"
                   value={additionalSymptoms}
                   onChange={(e) => setAdditionalSymptoms(e.target.value)}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="sym-ctx">Relevant Context (optional)</Label>
+                <Label htmlFor="sym-ctx">{t("sym.context")}</Label>
                 <Textarea
                   id="sym-ctx"
                   rows={2}
-                  placeholder="Recent travel, allergies, existing conditions, current medications..."
                   value={relevantContext}
                   onChange={(e) => setRelevantContext(e.target.value)}
                 />
@@ -207,10 +202,10 @@ export function SymptomCheckerPage() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Analyzing Educational Info...
+                    <Loader2 className="h-4 w-4 animate-spin" /> {t("sym.analyzing")}
                   </>
                 ) : (
-                  "Get Educational Symptom Info"
+                  t("sym.submit")
                 )}
               </Button>
             </form>
@@ -231,7 +226,7 @@ export function SymptomCheckerPage() {
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between gap-2">
-                    <CardTitle>Educational Overview</CardTitle>
+                    <CardTitle>{t("sym.overview")}</CardTitle>
                     <Badge>{result.ai_model}</Badge>
                   </div>
                 </CardHeader>
@@ -239,9 +234,7 @@ export function SymptomCheckerPage() {
                   <p className="leading-relaxed">{result.educational_overview}</p>
 
                   <div>
-                    <h3 className="mb-2 font-semibold text-slate-900">
-                      Possible Common Explanations (Educational Possibilities — Not a Diagnosis)
-                    </h3>
+                    <h3 className="mb-2 font-semibold text-slate-900">{t("sym.possibilities")}</h3>
                     <div className="space-y-2.5">
                       {result.possible_explanations.map((item, idx) => (
                         <div key={idx} className="rounded-xl border border-blue-100 bg-blue-50/40 p-3.5">
@@ -255,7 +248,7 @@ export function SymptomCheckerPage() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
                       <h4 className="flex items-center gap-1.5 font-semibold text-emerald-900">
-                        <CheckCircle2 className="h-4 w-4" /> Recommended Next Steps
+                        <CheckCircle2 className="h-4 w-4" /> {t("sym.nextSteps")}
                       </h4>
                       <ul className="mt-2 list-disc space-y-1 pl-4">
                         {result.recommended_next_steps.map((step, idx) => (
@@ -266,7 +259,7 @@ export function SymptomCheckerPage() {
 
                     <div className="rounded-xl border border-red-200 bg-red-50/50 p-4">
                       <h4 className="flex items-center gap-1.5 font-semibold text-red-900">
-                        <AlertCircle className="h-4 w-4" /> Warning Signs (Seek Urgent Care)
+                        <AlertCircle className="h-4 w-4" /> {t("sym.warnings")}
                       </h4>
                       <ul className="mt-2 list-disc space-y-1 pl-4 text-red-900">
                         {result.warning_signs.map((sign, idx) => (
@@ -277,13 +270,13 @@ export function SymptomCheckerPage() {
                   </div>
 
                   <div className="rounded-xl bg-slate-50 p-4">
-                    <h4 className="font-semibold text-slate-900">When to Consult a Doctor</h4>
+                    <h4 className="font-semibold text-slate-900">{t("sym.whenDoctor")}</h4>
                     <p className="mt-1">{result.when_to_consult_doctor}</p>
                   </div>
 
                   {result.questions_for_doctor.length > 0 && (
                     <div>
-                      <h4 className="font-semibold text-slate-900">Helpful Questions for Your Doctor</h4>
+                      <h4 className="font-semibold text-slate-900">{t("sym.questions")}</h4>
                       <ul className="mt-1.5 list-disc space-y-1 pl-5">
                         {result.questions_for_doctor.map((q, idx) => (
                           <li key={idx}>{q}</li>
@@ -300,13 +293,8 @@ export function SymptomCheckerPage() {
             <Card className="flex min-h-[260px] items-center justify-center p-8 text-center">
               <div className="max-w-md space-y-2">
                 <Stethoscope className="mx-auto h-10 w-10 text-medical-cyan" />
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Structured Educational Symptom Guide
-                </h2>
-                <p className="text-sm text-slate-500">
-                  Submit the form on the left to review non-diagnostic educational possibilities,
-                  warning signs, and questions for your clinician.
-                </p>
+                <h2 className="text-lg font-semibold text-slate-900">{t("sym.emptyTitle")}</h2>
+                <p className="text-sm text-slate-500">{t("sym.emptySub")}</p>
               </div>
             </Card>
           )}
@@ -315,7 +303,7 @@ export function SymptomCheckerPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <History className="h-4 w-4 text-medical-blue" /> Recent Symptom Checks
+                  <History className="h-4 w-4 text-medical-blue" /> {t("sym.recent")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">

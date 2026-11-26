@@ -7,10 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
 import { evaluatePassword, isValidEmail } from "@/utils/validation";
 
 export function RegisterPage() {
   const { register } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const [fullName, setFullName] = useState("");
@@ -55,21 +57,19 @@ export function RegisterPage() {
   };
 
   const ruleItems = [
-    { label: "8+ characters", ok: pwEval.checks.length },
-    { label: "Uppercase letter", ok: pwEval.checks.upper },
-    { label: "Lowercase letter", ok: pwEval.checks.lower },
-    { label: "Number", ok: pwEval.checks.digit },
-    { label: "Special character", ok: pwEval.checks.special },
+    { label: t("auth.pwLen"), ok: pwEval.checks.length },
+    { label: t("auth.pwUpper"), ok: pwEval.checks.upper },
+    { label: t("auth.pwLower"), ok: pwEval.checks.lower },
+    { label: t("auth.pwDigit"), ok: pwEval.checks.digit },
+    { label: t("auth.pwSpecial"), ok: pwEval.checks.special },
   ];
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-12">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Create Your Account</CardTitle>
-          <CardDescription>
-            Start using AI Medical Assistant with private, user-isolated health storage.
-          </CardDescription>
+          <CardTitle className="text-2xl">{t("auth.createTitle")}</CardTitle>
+          <CardDescription>{t("auth.createSub")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -80,10 +80,9 @@ export function RegisterPage() {
             )}
 
             <div className="space-y-1.5">
-              <Label htmlFor="reg-name">Full Name</Label>
+              <Label htmlFor="reg-name">{t("auth.fullName")}</Label>
               <Input
                 id="reg-name"
-                placeholder="Dr. Alex Morgan or Alex Morgan"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
@@ -91,7 +90,7 @@ export function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="reg-email">Email Address</Label>
+              <Label htmlFor="reg-email">{t("auth.email")}</Label>
               <Input
                 id="reg-email"
                 type="email"
@@ -104,12 +103,11 @@ export function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="reg-password">Password</Label>
+              <Label htmlFor="reg-password">{t("auth.password")}</Label>
               <Input
                 id="reg-password"
                 type="password"
                 autoComplete="new-password"
-                placeholder="Create a strong password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -132,12 +130,11 @@ export function RegisterPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="reg-confirm">Confirm Password</Label>
+              <Label htmlFor="reg-confirm">{t("auth.confirmPassword")}</Label>
               <Input
                 id="reg-confirm"
                 type="password"
                 autoComplete="new-password"
-                placeholder="Re-enter password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
@@ -147,20 +144,20 @@ export function RegisterPage() {
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Creating Account...
+                  <Loader2 className="h-4 w-4 animate-spin" /> {t("auth.creating")}
                 </>
               ) : (
                 <>
-                  <UserPlus className="h-4 w-4" /> Create Account
+                  <UserPlus className="h-4 w-4" /> {t("auth.createBtn")}
                 </>
               )}
             </Button>
           </form>
 
           <p className="mt-5 text-center text-sm text-slate-600">
-            Already have an account?{" "}
+            {t("auth.alreadyAccount")}{" "}
             <Link to="/login" className="font-semibold text-medical-blue hover:underline">
-              Sign in
+              {t("nav.signIn")}
             </Link>
           </p>
         </CardContent>

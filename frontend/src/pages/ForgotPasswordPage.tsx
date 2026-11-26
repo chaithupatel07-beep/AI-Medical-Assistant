@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useLanguage } from "@/hooks/useLanguage";
 import { api } from "@/services/api";
 import { evaluatePassword, isValidEmail } from "@/utils/validation";
 
 export function ForgotPasswordPage() {
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -68,11 +70,9 @@ export function ForgotPasswordPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-2xl">
-            <KeyRound className="h-5 w-5 text-medical-blue" /> Password Recovery
+            <KeyRound className="h-5 w-5 text-medical-blue" /> {t("auth.recoveryTitle")}
           </CardTitle>
-          <CardDescription>
-            Request a secure reset token and choose a new strong password.
-          </CardDescription>
+          <CardDescription>{t("auth.recoverySub")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
@@ -89,7 +89,7 @@ export function ForgotPasswordPage() {
           {step === "request" && (
             <form onSubmit={handleRequestToken} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="fp-email">Account Email</Label>
+                <Label htmlFor="fp-email">{t("auth.accountEmail")}</Label>
                 <Input
                   id="fp-email"
                   type="email"
@@ -100,7 +100,7 @@ export function ForgotPasswordPage() {
                 />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generate Reset Token"}
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.genToken")}
               </Button>
             </form>
           )}
@@ -115,43 +115,41 @@ export function ForgotPasswordPage() {
               )}
 
               <div className="space-y-1.5">
-                <Label htmlFor="fp-token">Reset Token</Label>
+                <Label htmlFor="fp-token">{t("auth.resetToken")}</Label>
                 <Input
                   id="fp-token"
                   value={token}
                   onChange={(e) => setToken(e.target.value)}
-                  placeholder="Paste reset token"
                   required
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="fp-new-pw">New Password</Label>
+                <Label htmlFor="fp-new-pw">{t("auth.newPassword")}</Label>
                 <Input
                   id="fp-new-pw"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="8+ chars, upper, lower, number, symbol"
                   required
                 />
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Reset Password"}
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.resetBtn")}
               </Button>
             </form>
           )}
 
           {step === "done" && (
             <Button asChild className="w-full">
-              <Link to="/login">Proceed to Sign In</Link>
+              <Link to="/login">{t("auth.proceedSignIn")}</Link>
             </Button>
           )}
 
           <p className="text-center text-sm text-slate-600">
             <Link to="/login" className="text-medical-blue hover:underline">
-              Back to Sign In
+              {t("auth.backSignIn")}
             </Link>
           </p>
         </CardContent>

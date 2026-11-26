@@ -6,12 +6,16 @@ from typing import List, Literal, Optional
 from pydantic import BaseModel, Field
 
 
+LanguageCode = Literal["en", "te", "hi"]
+
+
 class ChatSessionCreate(BaseModel):
     title: Optional[str] = Field(None, max_length=200)
 
 
 class ChatMessageCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=4000)
+    language: LanguageCode = "en"
 
 
 class ChatMessageResponse(BaseModel):
@@ -55,6 +59,7 @@ class SymptomCheckRequest(BaseModel):
     severity: Literal["mild", "moderate", "severe"]
     additional_symptoms: Optional[str] = Field(None, max_length=1500)
     relevant_context: Optional[str] = Field(None, max_length=1500)
+    language: LanguageCode = "en"
 
 
 class PossibleExplanationItem(BaseModel):

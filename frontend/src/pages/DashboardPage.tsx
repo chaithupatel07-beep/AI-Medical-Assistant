@@ -17,11 +17,22 @@ import { DisclaimerBanner } from "@/components/DisclaimerBanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLanguage } from "@/hooks/useLanguage";
 import { api } from "@/services/api";
 import type { DashboardOverview } from "@/types/api";
 import { formatDateTime } from "@/utils/format";
 
+const CATEGORY_TRANSLATIONS: Record<string, Record<string, string>> = {
+  "General Health": { en: "General Health", te: "సాధారణ ఆరోగ్యం", hi: "सामान्य स्वास्थ्य" },
+  Nutrition: { en: "Nutrition", te: "పోషకాహారం", hi: "पोषण" },
+  "Fitness and Exercise": { en: "Fitness and Exercise", te: "ఫిట్‌నెస్ & వ్యాయామం", hi: "फिटनेस और व्यायाम" },
+  "Preventive Healthcare": { en: "Preventive Healthcare", te: "నివారణ ఆరోగ్య సంరక్షణ", hi: "निवारक स्वास्थ्य देखभाल" },
+  "Common Health Conditions": { en: "Common Health Conditions", te: "సాధారణ ఆరోగ్య సమస్యలు", hi: "सामान्य स्वास्थ्य समस्याएँ" },
+  "Mental Wellness": { en: "Mental Wellness", te: "మానసిక ఆరోగ్యం", hi: "मानसिक स्वास्थ्य" },
+};
+
 export function DashboardPage() {
+  const { language, t } = useLanguage();
   const [data, setData] = useState<DashboardOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,50 +62,43 @@ export function DashboardPage() {
   }
 
   const statCards = [
-    { label: "Uploaded Reports", value: data.stats.total_reports, icon: FileText, to: "/dashboard/reports" },
-    { label: "AI Summaries", value: data.stats.summarized_reports, icon: Activity, to: "/dashboard/reports" },
-    { label: "AI Conversations", value: data.stats.total_chat_sessions, icon: MessageSquareHeart, to: "/dashboard/chat" },
-    { label: "Symptom Checks", value: data.stats.total_symptom_checks, icon: Stethoscope, to: "/dashboard/symptoms" },
-    { label: "Analyzed Images", value: data.stats.total_images, icon: ImageIcon, to: "/dashboard/images" },
+    { label: t("dash.statReports"), value: data.stats.total_reports, icon: FileText, to: "/dashboard/reports" },
+    { label: t("dash.statSummaries"), value: data.stats.summarized_reports, icon: Activity, to: "/dashboard/reports" },
+    { label: t("dash.statChats"), value: data.stats.total_chat_sessions, icon: MessageSquareHeart, to: "/dashboard/chat" },
+    { label: t("dash.statSymptoms"), value: data.stats.total_symptom_checks, icon: Stethoscope, to: "/dashboard/symptoms" },
+    { label: t("dash.statImages"), value: data.stats.total_images, icon: ImageIcon, to: "/dashboard/images" },
   ];
 
   const quickServices = [
-    { title: "AI Medical Chat", desc: "Ask health questions", to: "/dashboard/chat", icon: MessageSquareHeart },
-    { title: "Symptom Checker", desc: "Structured symptom guide", to: "/dashboard/symptoms", icon: Stethoscope },
-    { title: "Report Summarizer", desc: "Upload PDF or lab image", to: "/dashboard/reports", icon: FileText },
-    { title: "Image Analysis", desc: "Vision AI observations", to: "/dashboard/images", icon: ImageIcon },
+    { title: t("nav.chat"), desc: t("dash.qChatDesc"), to: "/dashboard/chat", icon: MessageSquareHeart },
+    { title: t("nav.symptoms"), desc: t("dash.qSymDesc"), to: "/dashboard/symptoms", icon: Stethoscope },
+    { title: t("nav.reports"), desc: t("dash.qRepDesc"), to: "/dashboard/reports", icon: FileText },
+    { title: t("nav.images"), desc: t("dash.qImgDesc"), to: "/dashboard/images", icon: ImageIcon },
   ];
 
-  const libraryShortcuts = [
-    "General Health",
-    "Nutrition",
-    "Fitness and Exercise",
-    "Preventive Healthcare",
-    "Common Health Conditions",
-    "Mental Wellness",
-  ];
+  const libraryShortcuts = Object.keys(CATEGORY_TRANSLATIONS);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 rounded-2xl bg-gradient-to-r from-medical-blue to-medical-cyan p-6 text-white shadow-soft sm:flex-row sm:items-center">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-blue-100">
-            Personal Healthcare Hub
+            {t("dash.hub")}
           </p>
           <h1 className="mt-1 text-2xl font-bold sm:text-3xl">
-            Welcome back, {data.user.full_name}
+            {t("dash.welcome")}, {data.user.full_name}
           </h1>
-          <p className="mt-1 text-sm text-blue-50">
-            All metrics below are loaded live from your private database records.
-          </p>
+          <p className="mt-1 text-sm text-blue-50">{t("dash.liveSub")}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge className="border-white/30 bg-white/15 text-white">
-            AI: {data.ai_status.configured ? `Ready (${data.ai_status.chat_model})` : "Needs API Key"}
+            {data.ai_status.configured
+              ? `${t("dash.aiReady")} (${data.ai_status.chat_model})`
+              : t("dash.aiNeedsKey")}
           </Badge>
           <Button variant="secondary" asChild>
             <Link to="/dashboard/records">
-              <FolderHeart className="h-4 w-4" /> My Records
+              <FolderHeart className="h-4 w-4" /> {t("dash.myRecords")}
             </Link>
           </Button>
         </div>
@@ -151,18 +155,16 @@ export function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Recent Medical Reports</CardTitle>
-              <CardDescription>Latest uploaded PDF and image reports</CardDescription>
+              <CardTitle>{t("dash.recentReports")}</CardTitle>
+              <CardDescription>{t("dash.recentReportsSub")}</CardDescription>
             </div>
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/dashboard/reports">View all</Link>
+              <Link to="/dashboard/reports">{t("dash.viewAll")}</Link>
             </Button>
           </CardHeader>
           <CardContent>
             {data.recent_reports.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No reports uploaded yet. Upload your first lab report to get started.
-              </p>
+              <p className="text-sm text-slate-500">{t("dash.noReports")}</p>
             ) : (
               <div className="space-y-3">
                 {data.recent_reports.map((report) => (
@@ -190,18 +192,16 @@ export function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Recent AI Conversations</CardTitle>
-              <CardDescription>Continue an earlier educational chat</CardDescription>
+              <CardTitle>{t("dash.recentChats")}</CardTitle>
+              <CardDescription>{t("dash.recentChatsSub")}</CardDescription>
             </div>
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/dashboard/chat">Open chat</Link>
+              <Link to="/dashboard/chat">{t("dash.openChat")}</Link>
             </Button>
           </CardHeader>
           <CardContent>
             {data.recent_chats.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No conversations yet. Start a new chat with AI Medical Assistant.
-              </p>
+              <p className="text-sm text-slate-500">{t("dash.noChats")}</p>
             ) : (
               <div className="space-y-3">
                 {data.recent_chats.map((chat) => (
@@ -214,7 +214,7 @@ export function DashboardPage() {
                       <p className="truncate text-sm font-medium text-slate-900">{chat.title}</p>
                       <p className="text-xs text-slate-500">{formatDateTime(chat.updated_at)}</p>
                     </div>
-                    <Badge>{chat.message_count} msgs</Badge>
+                    <Badge>{chat.message_count}</Badge>
                   </Link>
                 ))}
               </div>
@@ -227,14 +227,16 @@ export function DashboardPage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-medical-blue" /> Health Information Shortcuts
+              <BookOpen className="h-5 w-5 text-medical-blue" /> {t("dash.libShortcuts")}
             </CardTitle>
-            <CardDescription>Jump directly to trusted MedlinePlus, WHO, and CDC guides</CardDescription>
+            <CardDescription>{t("dash.libShortcutsSub")}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             {libraryShortcuts.map((cat) => (
               <Button key={cat} variant="outline" size="sm" asChild>
-                <Link to={`/dashboard/library?category=${encodeURIComponent(cat)}`}>{cat}</Link>
+                <Link to={`/dashboard/library?category=${encodeURIComponent(cat)}`}>
+                  {CATEGORY_TRANSLATIONS[cat]?.[language] || cat}
+                </Link>
               </Button>
             ))}
           </CardContent>
@@ -243,15 +245,15 @@ export function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <UserCheck className="h-5 w-5 text-medical-cyan" /> Profile Summary
+              <UserCheck className="h-5 w-5 text-medical-cyan" /> {t("dash.profileSummary")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-slate-600">
-            <p><strong className="text-slate-800">Name:</strong> {data.user.full_name}</p>
-            <p><strong className="text-slate-800">Blood Type:</strong> {data.user.profile?.blood_type || "Not set"}</p>
-            <p><strong className="text-slate-800">Allergies:</strong> {data.user.profile?.allergies || "None recorded"}</p>
+            <p><strong className="text-slate-800">{t("dash.nameLabel")}:</strong> {data.user.full_name}</p>
+            <p><strong className="text-slate-800">{t("dash.bloodTypeLabel")}:</strong> {data.user.profile?.blood_type || t("dash.notSet")}</p>
+            <p><strong className="text-slate-800">{t("dash.allergiesLabel")}:</strong> {data.user.profile?.allergies || t("dash.noneRecorded")}</p>
             <Button variant="secondary" size="sm" className="mt-2 w-full" asChild>
-              <Link to="/dashboard/records">Update Health Profile</Link>
+              <Link to="/dashboard/records">{t("dash.updateProfile")}</Link>
             </Button>
           </CardContent>
         </Card>

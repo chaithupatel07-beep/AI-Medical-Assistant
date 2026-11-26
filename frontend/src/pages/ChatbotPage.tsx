@@ -17,11 +17,13 @@ import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { useLanguage } from "@/hooks/useLanguage";
 import { api } from "@/services/api";
 import type { ChatMessage, ChatSession } from "@/types/api";
 import { formatDateTime } from "@/utils/format";
 
 export function ChatbotPage() {
+  const { language, t } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialSessionId = searchParams.get("session");
 
@@ -45,10 +47,9 @@ export function ChatbotPage() {
   }, [messages, sending]);
 
   useEffect(() => {
-    Promise.all([api.listChatSessions(), api.getSuggestedQuestions(), api.health()])
-      .then(([sessionList, suggestions, health]) => {
+    Promise.all([api.listChatSessions(), api.health()])
+      .then(([sessionList, health]) => {
         setSessions(sessionList);
-        setSuggestedQuestions(suggestions.questions);
         setAiConfigured(health.ai_configured);
 
         if (initialSessionId && sessionList.some((s) => s.id === initialSessionId)) {
@@ -60,6 +61,13 @@ export function ChatbotPage() {
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to initialize chat."))
       .finally(() => setLoadingSessions(false));
   }, [initialSessionId]);
+
+  useEffect(() => {
+    api
+      .getSuggestedQuestions(language)
+      .then((res) => setSuggestedQuestions(res.questions))
+      .catch(() => {});
+  }, [language]);
 
   useEffect(() => {
     if (!activeSessionId) {
@@ -147,7 +155,7 @@ export function ChatbotPage() {
         setSearchParams({ session: created.id });
       }
 
-      const turn = await api.sendChatMessage(targetSessionId, trimmed);
+      const turn = await api.sendChatMessage(targetSessionId, trimmed, language);
       setInput("");
       setMessages((prev) => [...prev, turn.user_message, turn.assistant_message]);
       setSessions((prev) => {
@@ -174,18 +182,16 @@ export function ChatbotPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">AI Medical Chatbot</h1>
-          <p className="text-sm text-slate-600">
-            Ask general health questions, decode medical terms, and prepare for clinical visits.
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900">{t("chat.title")}</h1>
+          <p className="text-sm text-slate-600">{t("chat.sub")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={handleNewSession}>
-            <MessageSquarePlus className="h-4 w-4" /> New Chat
+            <MessageSquarePlus className="h-4 w-4" /> {t("chat.newChat")}
           </Button>
           {activeSessionId && (
             <Button variant="outline" onClick={handleClearSession} disabled={messages.length === 0}>
-              <Eraser className="h-4 w-4" /> Clear Chat
+              <Eraser className="h-4 w-4" /> {t("chat.clearChat")}
             </Button>
           )}
         </div>
@@ -204,16 +210,14 @@ export function ChatbotPage() {
       <div className="grid gap-4 lg:grid-cols-12">
         <Card className="flex max-h-[650px] flex-col p-3 lg:col-span-4">
           <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Conversation History
+            {t("chat.history")}
           </p>
           {loadingSessions ? (
             <div className="flex flex-1 items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-medical-blue" />
             </div>
           ) : sessions.length === 0 ? (
-            <p className="px-2 py-6 text-sm text-slate-500">
-              No saved conversations yet. Click New Chat or ask a question below.
-            </p>
+            <p className="px-2 py-6 text-sm text-slate-500">{t("chat.noSessions")}</p>
           ) : (
             <div className="flex-1 space-y-1.5 overflow-y-auto pr-1">
               {sessions.map((s) => (
@@ -235,7 +239,7 @@ export function ChatbotPage() {
                   >
                     <p className="truncate text-sm font-semibold text-slate-900">{s.title}</p>
                     <p className="text-xs text-slate-500">
-                      {s.message_count} messages · {formatDateTime(s.updated_at)}
+                      {s.message_count} · {formatDateTime(s.updated_at)}
                     </p>
                   </button>
                   <button
@@ -264,13 +268,8 @@ export function ChatbotPage() {
                   <Sparkles className="h-7 w-7" />
                 </div>
                 <div className="max-w-md space-y-1">
-                  <h2 className="text-lg font-bold text-slate-900">
-                    Start an Educational Health Conversation
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    Ask about medical terminology, preventive wellness, or common symptoms. Never a
-                    substitute for a licensed physician.
-                  </p>
+                  <h2 className="text-lg font-bold text-slate-900">{t("chat.emptyTitle")}</h2>
+                  <p className="text-sm text-slate-500">{t("chat.emptySub")}</p>
                 </div>
                 <div className="flex max-w-xl flex-wrap justify-center gap-2">
                   {suggestedQuestions.map((q) => (
@@ -307,7 +306,7 @@ export function ChatbotPage() {
                     >
                       {msg.emergency_flagged && (
                         <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-red-600">
-                          <AlertTriangle className="h-3.5 w-3.5" /> Emergency Warning Flagged
+                          <AlertTriangle className="h-3.5 w-3.5" /> {t("chat.emergencyFlag")}
                         </div>
                       )}
                       {isUser ? (
@@ -331,7 +330,7 @@ export function ChatbotPage() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-medical-blue">
                   <Loader2 className="h-4 w-4 animate-spin" />
                 </div>
-                <span>Generating educational response...</span>
+                <span>{t("chat.thinking")}</span>
               </div>
             )}
             <div ref={bottomRef} />
@@ -346,7 +345,7 @@ export function ChatbotPage() {
             <form onSubmit={handleSubmit} className="flex items-end gap-2">
               <Textarea
                 rows={2}
-                placeholder="Ask a health education question (e.g., What does TSH measure?)..."
+                placeholder={t("chat.placeholder")}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -361,9 +360,7 @@ export function ChatbotPage() {
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </form>
-            <p className="mt-2 text-[11px] text-slate-500">
-              Educational information only — never diagnoses or replaces a licensed doctor.
-            </p>
+            <p className="mt-2 text-[11px] text-slate-500">{t("chat.footerNote")}</p>
           </div>
         </Card>
       </div>

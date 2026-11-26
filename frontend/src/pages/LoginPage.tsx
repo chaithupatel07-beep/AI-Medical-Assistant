@@ -7,10 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
 import { isValidEmail } from "@/utils/validation";
 
 export function LoginPage() {
   const { login } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const fromPath = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || "/dashboard";
@@ -47,8 +49,8 @@ export function LoginPage() {
     <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-12">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Welcome Back</CardTitle>
-          <CardDescription>Sign in to access your private health dashboard and AI tools.</CardDescription>
+          <CardTitle className="text-2xl">{t("auth.welcomeBack")}</CardTitle>
+          <CardDescription>{t("auth.signInSub")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -59,7 +61,7 @@ export function LoginPage() {
             )}
 
             <div className="space-y-1.5">
-              <Label htmlFor="login-email">Email Address</Label>
+              <Label htmlFor="login-email">{t("auth.email")}</Label>
               <Input
                 id="login-email"
                 type="email"
@@ -73,16 +75,15 @@ export function LoginPage() {
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label htmlFor="login-password">Password</Label>
+                <Label htmlFor="login-password">{t("auth.password")}</Label>
                 <Link to="/forgot-password" className="text-xs font-medium text-medical-blue hover:underline">
-                  Forgot password?
+                  {t("auth.forgotPassword")}
                 </Link>
               </div>
               <Input
                 id="login-password"
                 type="password"
                 autoComplete="current-password"
-                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -92,20 +93,20 @@ export function LoginPage() {
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Signing In...
+                  <Loader2 className="h-4 w-4 animate-spin" /> {t("auth.signingIn")}
                 </>
               ) : (
                 <>
-                  <LogIn className="h-4 w-4" /> Sign In
+                  <LogIn className="h-4 w-4" /> {t("nav.signIn")}
                 </>
               )}
             </Button>
           </form>
 
           <p className="mt-5 text-center text-sm text-slate-600">
-            New to AI Medical Assistant?{" "}
+            {t("auth.newHere")}{" "}
             <Link to="/register" className="font-semibold text-medical-blue hover:underline">
-              Create an account
+              {t("auth.createAccountLink")}
             </Link>
           </p>
         </CardContent>

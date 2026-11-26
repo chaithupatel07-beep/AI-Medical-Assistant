@@ -69,6 +69,7 @@ class UserProfileUpdate(BaseModel):
     chronic_conditions: Optional[str] = Field(None, max_length=2000)
     emergency_contact: Optional[str] = Field(None, max_length=150)
     preferred_units: Optional[str] = Field(None, pattern="^(metric|imperial)$")
+    preferred_language: Optional[str] = Field(None, pattern="^(en|te|hi)$")
 
 
 class UserProfileResponse(BaseModel):
@@ -80,6 +81,7 @@ class UserProfileResponse(BaseModel):
     chronic_conditions: Optional[str] = None
     emergency_contact: Optional[str] = None
     preferred_units: str = "metric"
+    preferred_language: str = "en"
     updated_at: Optional[datetime] = None
 
 

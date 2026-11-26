@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     chronic_conditions TEXT,
     emergency_contact VARCHAR(150),
     preferred_units VARCHAR(16) NOT NULL DEFAULT 'metric',
+    preferred_language VARCHAR(8) NOT NULL DEFAULT 'en',
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

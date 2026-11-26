@@ -181,8 +181,8 @@ export const api = {
 
   clearActivity: () => request<{ message: string }>("/api/users/activity", { method: "DELETE" }),
 
-  getSuggestedQuestions: () =>
-    request<{ questions: string[] }>("/api/chat/suggested-questions"),
+  getSuggestedQuestions: (lang = "en") =>
+    request<{ questions: string[] }>(`/api/chat/suggested-questions?lang=${encodeURIComponent(lang)}`),
 
   listChatSessions: () => request<ChatSession[]>("/api/chat/sessions"),
 
@@ -195,10 +195,10 @@ export const api = {
   getChatSession: (sessionId: string) =>
     request<ChatSessionDetail>(`/api/chat/sessions/${sessionId}`),
 
-  sendChatMessage: (sessionId: string, content: string) =>
+  sendChatMessage: (sessionId: string, content: string, language = "en") =>
     request<ChatTurnResponse>(`/api/chat/sessions/${sessionId}/messages`, {
       method: "POST",
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, language }),
     }),
 
   clearChatSession: (sessionId: string) =>
@@ -209,7 +209,7 @@ export const api = {
   deleteChatSession: (sessionId: string) =>
     request<{ message: string }>(`/api/chat/sessions/${sessionId}`, { method: "DELETE" }),
 
-  checkSymptoms: (payload: SymptomCheckPayload) =>
+  checkSymptoms: (payload: SymptomCheckPayload & { language?: string }) =>
     request<SymptomCheckResult>("/api/symptoms/check", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -223,8 +223,10 @@ export const api = {
     return uploadWithProgress<MedicalReport>("/api/reports/upload", fd, onProgress);
   },
 
-  summarizeReport: (reportId: string) =>
-    request<MedicalReport>(`/api/reports/${reportId}/summarize`, { method: "POST" }),
+  summarizeReport: (reportId: string, lang = "en") =>
+    request<MedicalReport>(`/api/reports/${reportId}/summarize?lang=${encodeURIComponent(lang)}`, {
+      method: "POST",
+    }),
 
   listReports: () => request<MedicalReport[]>("/api/reports"),
 
@@ -242,21 +244,27 @@ export const api = {
     return uploadWithProgress<MedicalImage>("/api/images/upload", fd, onProgress);
   },
 
-  analyzeImage: (imageId: string) =>
-    request<MedicalImage>(`/api/images/${imageId}/analyze`, { method: "POST" }),
+  analyzeImage: (imageId: string, lang = "en") =>
+    request<MedicalImage>(`/api/images/${imageId}/analyze?lang=${encodeURIComponent(lang)}`, {
+      method: "POST",
+    }),
 
   listImages: () => request<MedicalImage[]>("/api/images"),
 
   deleteImage: (imageId: string) =>
     request<{ message: string }>(`/api/images/${imageId}`, { method: "DELETE" }),
 
-  listLibraryArticles: (category?: string, query?: string) => {
+  listLibraryArticles: (category?: string, query?: string, lang = "en") => {
     const params = new URLSearchParams();
     if (category && category !== "All") params.set("category", category);
     if (query?.trim()) params.set("q", query.trim());
+    params.set("lang", lang);
     const qs = params.toString();
-    return request<{ categories: string[]; articles: LibraryArticle[]; total: number }>(
-      `/api/library/articles${qs ? `?${qs}` : ""}`
-    );
+    return request<{
+      categories: string[];
+      category_labels?: Record<string, string>;
+      articles: LibraryArticle[];
+      total: number;
+    }>(`/api/library/articles?${qs}`);
   },
 };

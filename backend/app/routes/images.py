@@ -4,11 +4,11 @@ import json
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from app.core.safety import IMAGE_DISCLAIMER
+from app.core.safety import get_disclaimer, normalize_language
 from app.core.security import get_current_user
 from app.database.session import get_db
 from app.models.entities import UploadedImage, User
@@ -20,7 +20,7 @@ from app.utils.file_validation import delete_stored_file, validate_and_store_upl
 router = APIRouter(prefix="/api/images", tags=["Medical Image Analysis"])
 
 
-def _serialize_image(img: UploadedImage) -> MedicalImageResponse:
+def _serialize_image(img: UploadedImage, lang: str = "en") -> MedicalImageResponse:
     return MedicalImageResponse(
         id=img.id,
         original_filename=img.original_filename,
@@ -33,7 +33,7 @@ def _serialize_image(img: UploadedImage) -> MedicalImageResponse:
         recommended_next_steps=img.recommended_next_steps,
         ai_model=img.ai_model,
         status=img.status,
-        disclaimer=IMAGE_DISCLAIMER,
+        disclaimer=get_disclaimer("image", lang),
         created_at=img.created_at,
     )
 
@@ -89,10 +89,12 @@ async def upload_medical_image(
 @router.post("/{image_id}/analyze", response_model=MedicalImageResponse)
 async def analyze_medical_image(
     image_id: str,
+    lang: str = Query("en"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     record = _get_owned_image(db, image_id, current_user.id)
+    language = normalize_language(lang)
     path = Path(record.storage_path)
     if not path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stored image file missing.")
@@ -102,6 +104,7 @@ async def analyze_medical_image(
         raw_bytes=raw_bytes,
         mime_type=record.mime_type,
         image_context=record.image_context,
+        language=language,
     )
 
     record.analysis_summary = analysis.get("analysis_summary", "")
@@ -118,11 +121,11 @@ async def analyze_medical_image(
         description=f"Generated Vision AI observations for '{record.original_filename}'.",
         resource_type="uploaded_image",
         resource_id=record.id,
-        metadata={"ai_model": model_used},
+        metadata={"ai_model": model_used, "language": language},
     )
     db.commit()
     db.refresh(record)
-    return _serialize_image(record)
+    return _serialize_image(record, language)
 
 
 @router.get("", response_model=List[MedicalImageResponse])

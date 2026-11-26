@@ -1,4 +1,5 @@
 import { AlertTriangle, ShieldAlert } from "lucide-react";
+import { useLanguage } from "@/hooks/useLanguage";
 import { cn } from "@/utils/cn";
 
 interface DisclaimerBannerProps {
@@ -16,6 +17,7 @@ export function DisclaimerBanner({
   reasons,
   className,
 }: DisclaimerBannerProps) {
+  const { t } = useLanguage();
   const isEmergency = variant === "emergency";
   return (
     <div
@@ -35,20 +37,14 @@ export function DisclaimerBanner({
       )}
       <div className="space-y-1">
         <p className={cn("font-semibold", isEmergency ? "text-red-800" : "text-slate-900")}>
-          {title ||
-            (isEmergency
-              ? "Immediate Medical Attention Advised"
-              : "Educational Healthcare Information Only")}
+          {title || (isEmergency ? t("disclaimer.emergTitle") : t("disclaimer.eduTitle"))}
         </p>
         <p className="leading-relaxed">
-          {message ||
-            (isEmergency
-              ? "Potential emergency warning signs were detected. Call your local emergency number (e.g., 911 / 112 / 999) or go to the nearest emergency room right away."
-              : "This platform provides educational health information only. It does not diagnose conditions, prescribe medication, or replace care from a licensed clinician.")}
+          {message || (isEmergency ? t("disclaimer.emergBody") : t("disclaimer.eduBody"))}
         </p>
         {reasons && reasons.length > 0 && (
           <p className="text-xs font-medium text-red-700">
-            Detected signals: {reasons.join(" · ")}
+            {t("disclaimer.detectedSignals")}: {reasons.join(" · ")}
           </p>
         )}
       </div>

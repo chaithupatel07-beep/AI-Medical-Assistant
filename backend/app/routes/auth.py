@@ -44,6 +44,7 @@ def serialize_user(user: User) -> UserResponse:
             chronic_conditions=user.profile.chronic_conditions,
             emergency_contact=user.profile.emergency_contact,
             preferred_units=user.profile.preferred_units,
+            preferred_language=getattr(user.profile, "preferred_language", "en") or "en",
             updated_at=user.profile.updated_at,
         )
     return UserResponse(

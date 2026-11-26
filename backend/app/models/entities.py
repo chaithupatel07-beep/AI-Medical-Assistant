@@ -66,6 +66,7 @@ class UserProfile(Base):
     chronic_conditions = Column(Text, nullable=True)
     emergency_contact = Column(String(150), nullable=True)
     preferred_units = Column(String(16), default="metric", nullable=False)
+    preferred_language = Column(String(8), default="en", nullable=False)
     updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False)
 
     user = relationship("User", back_populates="profile")

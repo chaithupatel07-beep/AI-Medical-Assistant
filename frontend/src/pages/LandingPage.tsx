@@ -17,77 +17,29 @@ import { DisclaimerBanner } from "@/components/DisclaimerBanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const features = [
-  {
-    icon: MessageSquareHeart,
-    title: "AI Medical Chatbot",
-    description:
-      "Ask health questions in plain language and receive educational answers, medical term explanations, and emergency warning checks.",
-  },
-  {
-    icon: FileText,
-    title: "Medical Report Summarizer",
-    description:
-      "Upload PDF, JPG, or PNG lab reports to extract measured values, view supplied reference ranges, and generate plain-English summaries.",
-  },
-  {
-    icon: Stethoscope,
-    title: "Symptom Information Checker",
-    description:
-      "Enter symptom details, duration, and severity to review educational possibilities, red flags, and questions for your doctor.",
-  },
-  {
-    icon: ImageIcon,
-    title: "Medical Image Analysis",
-    description:
-      "Securely send medical-related images to a Vision AI service for high-level visual observations and clear clinical review guidance.",
-  },
-  {
-    icon: BookOpen,
-    title: "Health Information Library",
-    description:
-      "Explore curated articles across 6 health categories linked directly to MedlinePlus, WHO, and CDC resources.",
-  },
-  {
-    icon: FolderHeart,
-    title: "Personal Health Dashboard",
-    description:
-      "Keep your reports, AI summaries, conversations, and health profile private, organized, and downloadable anytime.",
-  },
-];
-
-const steps = [
-  {
-    num: "01",
-    title: "Create Your Private Account",
-    text: "Sign up securely with encrypted credentials so your reports and conversations remain strictly yours.",
-  },
-  {
-    num: "02",
-    title: "Upload Reports or Ask Questions",
-    text: "Submit lab PDFs/images, describe symptoms, or start a chat with AI Medical Assistant.",
-  },
-  {
-    num: "03",
-    title: "Review Clear Educational Insights",
-    text: "See extracted values, plain-English explanations, limitations, and safety warnings in seconds.",
-  },
-  {
-    num: "04",
-    title: "Prepare for Your Doctor Visit",
-    text: "Download your report summary and tailored questions to have more informed clinical conversations.",
-  },
-];
-
-const benefits = [
-  "Translates complex medical jargon into approachable English",
-  "Never invents laboratory reference ranges or fake test results",
-  "Built-in emergency keyword detection for urgent symptoms",
-  "Private user-isolated storage with full record deletion control",
-];
+import { useLanguage } from "@/hooks/useLanguage";
 
 export function LandingPage() {
+  const { t } = useLanguage();
+
+  const features = [
+    { icon: MessageSquareHeart, title: t("landing.f1.title"), description: t("landing.f1.desc") },
+    { icon: FileText, title: t("landing.f2.title"), description: t("landing.f2.desc") },
+    { icon: Stethoscope, title: t("landing.f3.title"), description: t("landing.f3.desc") },
+    { icon: ImageIcon, title: t("landing.f4.title"), description: t("landing.f4.desc") },
+    { icon: BookOpen, title: t("landing.f5.title"), description: t("landing.f5.desc") },
+    { icon: FolderHeart, title: t("landing.f6.title"), description: t("landing.f6.desc") },
+  ];
+
+  const steps = [
+    { num: "01", title: t("landing.s1.title"), text: t("landing.s1.desc") },
+    { num: "02", title: t("landing.s2.title"), text: t("landing.s2.desc") },
+    { num: "03", title: t("landing.s3.title"), text: t("landing.s3.desc") },
+    { num: "04", title: t("landing.s4.title"), text: t("landing.s4.desc") },
+  ];
+
+  const benefits = [t("landing.b1"), t("landing.b2"), t("landing.b3"), t("landing.b4")];
+
   return (
     <div className="space-y-20 pb-16">
       <section className="relative overflow-hidden bg-gradient-to-b from-blue-50/90 via-sky-50/40 to-transparent pt-12 pb-16 lg:pt-20">
@@ -95,35 +47,33 @@ export function LandingPage() {
           <div className="space-y-6">
             <Badge className="gap-1.5 px-3 py-1 text-xs">
               <Sparkles className="h-3.5 w-3.5" />
-              Educational AI Healthcare Platform
+              {t("landing.badge")}
             </Badge>
             <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-              Your Health,{" "}
+              {t("landing.heroTitleStart")}{" "}
               <span className="bg-gradient-to-r from-medical-blue to-medical-cyan bg-clip-text text-transparent">
-                Smarter with AI
+                {t("landing.heroTitleAccent")}
               </span>
             </h1>
             <p className="max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
-              Understand lab reports, learn about symptoms, explore trusted clinical resources, and
-              prepare thoughtful questions before your next healthcare appointment—safely and
-              privately.
+              {t("landing.heroSubtitle")}
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <Button size="lg" asChild>
                 <Link to="/register">
-                  Get Started <ArrowRight className="h-4 w-4" />
+                  {t("nav.getStarted")} <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
-                <a href="#features">Explore Services</a>
+                <a href="#features">{t("landing.exploreServices")}</a>
               </Button>
             </div>
             <div className="flex flex-wrap items-center gap-6 pt-2 text-xs font-medium text-slate-500">
               <span className="inline-flex items-center gap-1.5">
-                <Lock className="h-4 w-4 text-medical-blue" /> Private User Records
+                <Lock className="h-4 w-4 text-medical-blue" /> {t("landing.privateRecords")}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <ShieldCheck className="h-4 w-4 text-medical-cyan" /> Non-Diagnostic Guardrails
+                <ShieldCheck className="h-4 w-4 text-medical-cyan" /> {t("landing.nonDiagnostic")}
               </span>
             </div>
           </div>
@@ -134,14 +84,11 @@ export function LandingPage() {
 
       <section id="features" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <Badge variant="cyan">Comprehensive Modules</Badge>
+          <Badge variant="cyan">{t("landing.modulesBadge")}</Badge>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-            Intelligent Healthcare Support Tools
+            {t("landing.modulesTitle")}
           </h2>
-          <p className="mt-3 text-slate-600">
-            Every module is designed to educate, clarify medical information, and protect patient
-            safety.
-          </p>
+          <p className="mt-3 text-slate-600">{t("landing.modulesSub")}</p>
         </div>
 
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -164,11 +111,13 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section id="how-it-works" className="bg-white/80 py-16 border-y border-blue-100">
+      <section id="how-it-works" className="border-y border-blue-100 bg-white/80 py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <Badge>Simple Workflow</Badge>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">How It Works</h2>
+            <Badge>{t("landing.workflowBadge")}</Badge>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
+              {t("landing.workflowTitle")}
+            </h2>
           </div>
 
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -188,14 +137,11 @@ export function LandingPage() {
 
       <section className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
         <div className="space-y-5">
-          <Badge variant="success">Why Patients & Students Trust It</Badge>
+          <Badge variant="success">{t("landing.whyBadge")}</Badge>
           <h2 className="text-3xl font-bold tracking-tight text-slate-900">
-            Clarity Without Guesswork
+            {t("landing.whyTitle")}
           </h2>
-          <p className="text-slate-600">
-            Medical documents can feel overwhelming. AI Medical Assistant breaks down terminology
-            transparently while strictly respecting clinical boundaries.
-          </p>
+          <p className="text-slate-600">{t("landing.whySub")}</p>
           <ul className="space-y-3">
             {benefits.map((b) => (
               <li key={b} className="flex items-start gap-2.5 text-sm text-slate-700">
@@ -205,19 +151,15 @@ export function LandingPage() {
             ))}
           </ul>
           <Button asChild>
-            <Link to="/library">Browse Health Information Library</Link>
+            <Link to="/library">{t("landing.browseLib")}</Link>
           </Button>
         </div>
 
         <Card id="safety" className="border-blue-200 bg-gradient-to-br from-white to-blue-50/60 p-6">
           <div className="space-y-4">
-            <h3 className="text-xl font-bold text-slate-900">Medical Safety & Privacy Commitment</h3>
+            <h3 className="text-xl font-bold text-slate-900">{t("landing.safetyCardTitle")}</h3>
             <DisclaimerBanner />
-            <p className="text-sm leading-relaxed text-slate-600">
-              Your uploaded PDFs, images, and chat histories are scoped exclusively to your
-              authenticated account, validated server-side, and can be permanently deleted anytime
-              from your Personal Health Dashboard.
-            </p>
+            <p className="text-sm leading-relaxed text-slate-600">{t("landing.safetyCardDesc")}</p>
           </div>
         </Card>
       </section>

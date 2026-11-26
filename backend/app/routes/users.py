@@ -51,6 +51,7 @@ def update_profile(
         "chronic_conditions",
         "emergency_contact",
         "preferred_units",
+        "preferred_language",
     )
     data = payload.model_dump(exclude_unset=True)
     for field in update_fields:

@@ -9,11 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { useBlobUrl } from "@/hooks/useBlobUrl";
+import { useLanguage } from "@/hooks/useLanguage";
 import { api } from "@/services/api";
 import type { MedicalImage } from "@/types/api";
 import { formatBytes, formatDateTime } from "@/utils/format";
 
 export function MedicalImagePage() {
+  const { language, t } = useLanguage();
   const [images, setImages] = useState<MedicalImage[]>([]);
   const [selectedImage, setSelectedImage] = useState<MedicalImage | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -71,7 +73,7 @@ export function MedicalImagePage() {
     setError(null);
     setAnalyzing(true);
     try {
-      const updated = await api.analyzeImage(imageId);
+      const updated = await api.analyzeImage(imageId, language);
       setImages((prev) => prev.map((img) => (img.id === updated.id ? updated : img)));
       setSelectedImage(updated);
     } catch (err) {
@@ -99,12 +101,9 @@ export function MedicalImagePage() {
     <div className="space-y-6">
       <div>
         <h1 className="flex items-center gap-2.5 text-2xl font-bold text-slate-900">
-          <ImageIcon className="h-6 w-6 text-medical-blue" /> Medical Image Analysis
+          <ImageIcon className="h-6 w-6 text-medical-blue" /> {t("img.title")}
         </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Upload a medical-related image for high-level Vision AI observations, explicit uncertainty
-          notes, and guidance for clinician review—never a medical diagnosis.
-        </p>
+        <p className="mt-1 text-sm text-slate-600">{t("img.sub")}</p>
       </div>
 
       <AiConfigNotice configured={aiConfigured} />
@@ -119,18 +118,18 @@ export function MedicalImagePage() {
         <div className="space-y-6 lg:col-span-5">
           <Card>
             <CardHeader>
-              <CardTitle>Upload Medical Image</CardTitle>
-              <CardDescription>Accepted formats: JPG, JPEG, PNG (Max 10 MB)</CardDescription>
+              <CardTitle>{t("img.uploadTitle")}</CardTitle>
+              <CardDescription>{t("img.uploadSub")}</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleUpload} className="space-y-4">
                 <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-blue-200 bg-slate-50/70 p-6 text-center hover:border-medical-blue">
                   <UploadCloud className="h-8 w-8 text-medical-blue" />
                   <p className="mt-2 text-sm font-medium text-slate-800">
-                    {file ? file.name : "Choose an image file"}
+                    {file ? file.name : t("img.choose")}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {file ? formatBytes(file.size) : "Validated server-side via magic bytes & Pillow"}
+                    {file ? formatBytes(file.size) : t("img.validated")}
                   </p>
                   <input
                     type="file"
@@ -141,11 +140,10 @@ export function MedicalImagePage() {
                 </label>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="img-ctx">Optional Context</Label>
+                  <Label htmlFor="img-ctx">{t("img.context")}</Label>
                   <Textarea
                     id="img-ctx"
                     rows={2}
-                    placeholder="e.g., Skin rash on forearm for 2 days, or printed scan label..."
                     value={contextText}
                     onChange={(e) => setContextText(e.target.value)}
                   />
@@ -154,7 +152,7 @@ export function MedicalImagePage() {
                 {uploading && <Progress value={uploadProgress} />}
 
                 <Button type="submit" className="w-full" disabled={uploading || !file}>
-                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Upload Image"}
+                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("img.uploadBtn")}
                 </Button>
               </form>
             </CardContent>
@@ -162,7 +160,7 @@ export function MedicalImagePage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Uploaded Images</CardTitle>
+              <CardTitle className="text-base">{t("img.uploadedList")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {loading ? (
@@ -170,7 +168,7 @@ export function MedicalImagePage() {
                   <Loader2 className="h-5 w-5 animate-spin text-medical-blue" />
                 </div>
               ) : images.length === 0 ? (
-                <p className="text-sm text-slate-500">No medical images uploaded yet.</p>
+                <p className="text-sm text-slate-500">{t("img.none")}</p>
               ) : (
                 images.map((img) => (
                   <div
@@ -211,9 +209,7 @@ export function MedicalImagePage() {
 
         <div className="space-y-6 lg:col-span-7">
           {!selectedImage ? (
-            <Card className="p-8 text-center text-sm text-slate-500">
-              Upload or select an image to preview it securely and run Vision AI observations.
-            </Card>
+            <Card className="p-8 text-center text-sm text-slate-500">{t("img.empty")}</Card>
           ) : (
             <Card>
               <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -221,18 +217,18 @@ export function MedicalImagePage() {
                   <CardTitle>{selectedImage.original_filename}</CardTitle>
                   <CardDescription>
                     {formatBytes(selectedImage.file_size_bytes)} ·{" "}
-                    {selectedImage.image_context || "No context note"}
+                    {selectedImage.image_context || "—"}
                   </CardDescription>
                 </div>
                 <Button onClick={() => void handleAnalyze(selectedImage.id)} disabled={analyzing}>
                   {analyzing ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Analyzing Image...
+                      <Loader2 className="h-4 w-4 animate-spin" /> {t("img.analyzing")}
                     </>
                   ) : (
                     <>
                       <Eye className="h-4 w-4" />
-                      {selectedImage.status === "analyzed" ? "Re-run Vision AI" : "Analyze Image"}
+                      {selectedImage.status === "analyzed" ? t("img.reAnalyze") : t("img.analyze")}
                     </>
                   )}
                 </Button>
@@ -259,7 +255,7 @@ export function MedicalImagePage() {
                   <div className="space-y-4 text-sm text-slate-700">
                     <div className="rounded-xl bg-blue-50/70 p-4">
                       <div className="mb-1 flex items-center justify-between">
-                        <h3 className="font-semibold text-slate-900">Educational Visual Summary</h3>
+                        <h3 className="font-semibold text-slate-900">{t("img.summaryTitle")}</h3>
                         {selectedImage.ai_model && <Badge>{selectedImage.ai_model}</Badge>}
                       </div>
                       <p className="leading-relaxed">{selectedImage.analysis_summary}</p>
@@ -267,9 +263,7 @@ export function MedicalImagePage() {
 
                     {selectedImage.observations.length > 0 && (
                       <div>
-                        <h3 className="mb-1.5 font-semibold text-slate-900">
-                          Neutral Visual Observations
-                        </h3>
+                        <h3 className="mb-1.5 font-semibold text-slate-900">{t("img.obsTitle")}</h3>
                         <ul className="list-disc space-y-1 pl-5">
                           {selectedImage.observations.map((obs, idx) => (
                             <li key={idx}>{obs}</li>
@@ -280,15 +274,13 @@ export function MedicalImagePage() {
 
                     <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
                       <h3 className="flex items-center gap-1.5 font-semibold text-amber-900">
-                        <AlertTriangle className="h-4 w-4" /> Limitations & Uncertainty
+                        <AlertTriangle className="h-4 w-4" /> {t("img.limitsTitle")}
                       </h3>
                       <p className="mt-1 text-amber-900">{selectedImage.limitations}</p>
                     </div>
 
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                      <h3 className="font-semibold text-slate-900">
-                        Recommended Professional Medical Review
-                      </h3>
+                      <h3 className="font-semibold text-slate-900">{t("img.nextTitle")}</h3>
                       <p className="mt-1">{selectedImage.recommended_next_steps}</p>
                     </div>
                   </div>

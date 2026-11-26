@@ -7,6 +7,7 @@ export interface UserProfile {
   chronic_conditions: string | null;
   emergency_contact: string | null;
   preferred_units: "metric" | "imperial";
+  preferred_language?: "en" | "te" | "hi";
   updated_at?: string | null;
 }
 
@@ -157,6 +158,7 @@ export interface LibraryArticle {
   id: string;
   title: string;
   category: string;
+  category_label?: string;
   read_time: string;
   summary: string;
   content: string;

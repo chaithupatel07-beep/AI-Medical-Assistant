@@ -4,11 +4,11 @@ import json
 from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from app.core.safety import REPORT_DISCLAIMER
+from app.core.safety import REPORT_DISCLAIMER, normalize_language
 from app.core.security import get_current_user
 from app.database.session import get_db
 from app.models.entities import MedicalReport, ReportSummary, User
@@ -113,10 +113,12 @@ async def upload_medical_report(
 @router.post("/{report_id}/summarize", response_model=MedicalReportResponse)
 async def summarize_medical_report(
     report_id: str,
+    lang: str = Query("en"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     report = _get_owned_report(db, report_id, current_user.id)
+    language = normalize_language(lang)
 
     if not report.extracted_text or not report.extracted_text.strip():
         raise HTTPException(
@@ -129,7 +131,7 @@ async def summarize_medical_report(
 
     deterministic_markers = parse_lab_markers_from_text(report.extracted_text)
     summary_payload, model_used = await generate_report_summary(
-        report.extracted_text, deterministic_markers
+        report.extracted_text, deterministic_markers, language=language
     )
 
     if report.summary:

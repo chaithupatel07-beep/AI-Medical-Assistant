@@ -10,13 +10,25 @@ from openai import APIStatusError, AsyncOpenAI, AuthenticationError, RateLimitEr
 
 from app.core.config import get_settings
 from app.core.safety import (
-    EMERGENCY_GUIDANCE,
-    GENERAL_DISCLAIMER,
-    IMAGE_DISCLAIMER,
-    REPORT_DISCLAIMER,
+    get_disclaimer,
+    normalize_language,
 )
 
 logger = logging.getLogger("ai_medical_assistant.ai")
+
+LANGUAGE_DIRECTIVES = {
+    "en": "Respond in clear, simple English that any patient can easily understand.",
+    "te": (
+        "Respond ENTIRELY in clear, simple, natural everyday Telugu (తెలుగు script) so that "
+        "every Telugu-speaking user can easily understand. You may include common medical terms "
+        "in brackets for clarity, e.g., హిమోగ్లోబిన్ (Hemoglobin)."
+    ),
+    "hi": (
+        "Respond ENTIRELY in clear, simple, natural everyday Hindi (हिन्दी Devanagari script) so that "
+        "every Hindi-speaking user can easily understand. You may include common medical terms "
+        "in brackets for clarity, e.g., हीमोग्लोबिन (Hemoglobin)."
+    ),
+}
 
 CHAT_SYSTEM_PROMPT = """You are AI Medical Assistant, a careful, empathetic, educational healthcare companion.
 
@@ -158,11 +170,15 @@ async def generate_chat_reply(
     history: List[Dict[str, str]],
     user_message: str,
     emergency_detected: bool,
+    language: str = "en",
 ) -> tuple[str, str]:
     settings = get_settings()
     client = _get_client()
+    lang = normalize_language(language)
 
-    messages: List[Dict[str, str]] = [{"role": "system", "content": CHAT_SYSTEM_PROMPT}]
+    messages: List[Dict[str, str]] = [
+        {"role": "system", "content": f"{CHAT_SYSTEM_PROMPT}\n\nLANGUAGE REQUIREMENT:\n{LANGUAGE_DIRECTIVES[lang]}"}
+    ]
     if emergency_detected:
         messages.append(
             {
@@ -188,8 +204,9 @@ async def generate_chat_reply(
         content = (response.choices[0].message.content or "").strip()
         if not content:
             raise ValueError("Empty response from AI provider.")
-        if emergency_detected and "emergency" not in content.lower():
-            content = f"**{EMERGENCY_GUIDANCE}**\n\n{content}"
+        emergency_text = get_disclaimer("emergency", lang)
+        if emergency_detected and "112" not in content and "emergency" not in content.lower():
+            content = f"**{emergency_text}**\n\n{content}"
         return content, settings.openai_chat_model
     except HTTPException:
         raise
@@ -204,9 +221,11 @@ async def generate_symptom_guidance(
     payload: Dict[str, Any],
     emergency_detected: bool,
     emergency_reasons: List[str],
+    language: str = "en",
 ) -> tuple[Dict[str, Any], str]:
     settings = get_settings()
     client = _get_client()
+    lang = normalize_language(language)
 
     user_prompt = (
         f"Age: {payload['age']}\n"
@@ -228,7 +247,14 @@ async def generate_symptom_guidance(
             model=settings.openai_chat_model,
             response_format={"type": "json_object"},
             messages=[
-                {"role": "system", "content": SYMPTOM_SYSTEM_PROMPT},
+                {
+                    "role": "system",
+                    "content": (
+                        f"{SYMPTOM_SYSTEM_PROMPT}\n\nLANGUAGE REQUIREMENT:\n"
+                        f"{LANGUAGE_DIRECTIVES[lang]} Keep all JSON keys strictly in English, "
+                        "and write all JSON string values in the requested language."
+                    ),
+                },
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.2,
@@ -256,8 +282,8 @@ async def generate_symptom_guidance(
         parsed["emergency_detected"] = emergency_detected
         parsed["emergency_reasons"] = emergency_reasons
         if emergency_detected:
-            parsed["emergency_banner"] = EMERGENCY_GUIDANCE
-        parsed["disclaimer"] = GENERAL_DISCLAIMER
+            parsed["emergency_banner"] = get_disclaimer("emergency", lang)
+        parsed["disclaimer"] = get_disclaimer("general", lang)
         return parsed, settings.openai_chat_model
     except HTTPException:
         raise
@@ -268,9 +294,11 @@ async def generate_symptom_guidance(
 async def generate_report_summary(
     extracted_text: str,
     deterministic_markers: List[Dict[str, Any]],
+    language: str = "en",
 ) -> tuple[Dict[str, Any], str]:
     settings = get_settings()
     client = _get_client()
+    lang = normalize_language(language)
 
     user_prompt = (
         "Here is the extracted text from an uploaded medical report:\n\n"
@@ -285,7 +313,16 @@ async def generate_report_summary(
             model=settings.openai_chat_model,
             response_format={"type": "json_object"},
             messages=[
-                {"role": "system", "content": REPORT_SUMMARY_SYSTEM_PROMPT},
+                {
+                    "role": "system",
+                    "content": (
+                        f"{REPORT_SUMMARY_SYSTEM_PROMPT}\n\nLANGUAGE REQUIREMENT:\n"
+                        f"{LANGUAGE_DIRECTIVES[lang]} Keep all JSON keys and marker status values "
+                        "('high', 'low', 'normal', 'unknown') strictly in English, and write "
+                        "plain_summary, explanations, medical_terms, questions_for_doctor, and warnings "
+                        "in the requested language."
+                    ),
+                },
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.1,
@@ -331,7 +368,7 @@ async def generate_report_summary(
         for list_key in ("questions_for_doctor", "warnings"):
             val = parsed.get(list_key)
             parsed[list_key] = [str(x) for x in val] if isinstance(val, list) else []
-        parsed["disclaimer"] = REPORT_DISCLAIMER
+        parsed["disclaimer"] = get_disclaimer("report", lang)
         return parsed, settings.openai_chat_model
     except HTTPException:
         raise
@@ -343,9 +380,11 @@ async def analyze_medical_image_with_vision(
     raw_bytes: bytes,
     mime_type: str,
     image_context: str | None,
+    language: str = "en",
 ) -> tuple[Dict[str, Any], str]:
     settings = get_settings()
     client = _get_client()
+    lang = normalize_language(language)
 
     b64 = base64.b64encode(raw_bytes).decode("utf-8")
     data_url = f"data:{mime_type};base64,{b64}"
@@ -359,7 +398,14 @@ async def analyze_medical_image_with_vision(
             max_tokens=2048,
             **_provider_extra_kwargs(settings),
             messages=[
-                {"role": "system", "content": IMAGE_VISION_SYSTEM_PROMPT},
+                {
+                    "role": "system",
+                    "content": (
+                        f"{IMAGE_VISION_SYSTEM_PROMPT}\n\nLANGUAGE REQUIREMENT:\n"
+                        f"{LANGUAGE_DIRECTIVES[lang]} Keep all JSON keys strictly in English, "
+                        "and write all JSON string values in the requested language."
+                    ),
+                },
                 {
                     "role": "user",
                     "content": [
@@ -382,7 +428,7 @@ async def analyze_medical_image_with_vision(
         parsed["observations"] = [str(x) for x in obs] if isinstance(obs, list) else []
         parsed["limitations"] = str(parsed.get("limitations") or "")
         parsed["recommended_next_steps"] = str(parsed.get("recommended_next_steps") or "")
-        parsed["disclaimer"] = IMAGE_DISCLAIMER
+        parsed["disclaimer"] = get_disclaimer("image", lang)
         return parsed, settings.openai_vision_model
     except HTTPException:
         raise

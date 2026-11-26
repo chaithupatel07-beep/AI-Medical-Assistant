@@ -6,7 +6,7 @@ from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.core.safety import detect_emergency_signals
+from app.core.safety import detect_emergency_signals, normalize_language
 from app.core.security import get_current_user
 from app.database.session import get_db
 from app.models.entities import User, UserActivity
@@ -29,12 +29,14 @@ async def check_symptoms(
             [payload.main_symptom, payload.additional_symptoms or "", payload.relevant_context or ""],
         )
     )
-    emergency_detected, emergency_reasons = detect_emergency_signals(combined_text)
+    lang = normalize_language(payload.language)
+    emergency_detected, emergency_reasons = detect_emergency_signals(combined_text, lang)
 
     guidance, model_used = await generate_symptom_guidance(
         payload.model_dump(),
         emergency_detected=emergency_detected,
         emergency_reasons=emergency_reasons,
+        language=lang,
     )
 
     activity = log_activity(

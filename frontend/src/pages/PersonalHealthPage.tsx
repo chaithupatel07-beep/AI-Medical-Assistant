@@ -20,6 +20,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
+import type { LanguageCode } from "@/i18n/types";
 import { api, downloadProtectedFile } from "@/services/api";
 import type { ActivityItem, ChatSession, MedicalImage, MedicalReport } from "@/types/api";
 import { formatBytes, formatDateTime } from "@/utils/format";
@@ -27,6 +29,7 @@ import { evaluatePassword } from "@/utils/validation";
 
 export function PersonalHealthPage() {
   const { user, setUserDirect } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   const [reports, setReports] = useState<MedicalReport[]>([]);
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [images, setImages] = useState<MedicalImage[]>([]);
@@ -48,6 +51,9 @@ export function PersonalHealthPage() {
   );
   const [preferredUnits, setPreferredUnits] = useState<"metric" | "imperial">(
     user?.profile?.preferred_units || "metric"
+  );
+  const [preferredLang, setPreferredLang] = useState<LanguageCode>(
+    user?.profile?.preferred_language || language
   );
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -77,6 +83,10 @@ export function PersonalHealthPage() {
     loadAll();
   }, []);
 
+  useEffect(() => {
+    setPreferredLang(language);
+  }, [language]);
+
   const handleSaveProfile = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -92,8 +102,10 @@ export function PersonalHealthPage() {
         chronic_conditions: chronicConditions.trim() || null,
         emergency_contact: emergencyContact.trim() || null,
         preferred_units: preferredUnits,
+        preferred_language: preferredLang,
       });
       setUserDirect(updated);
+      setLanguage(preferredLang);
       setFeedback("Personal health profile updated.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update profile.");
@@ -161,11 +173,9 @@ export function PersonalHealthPage() {
     <div className="space-y-6">
       <div>
         <h1 className="flex items-center gap-2.5 text-2xl font-bold text-slate-900">
-          <FolderHeart className="h-6 w-6 text-medical-blue" /> Personal Health Dashboard
+          <FolderHeart className="h-6 w-6 text-medical-blue" /> {t("rec.title")}
         </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Manage your private medical reports, summaries, AI chats, profile, and activity logs.
-        </p>
+        <p className="mt-1 text-sm text-slate-600">{t("rec.sub")}</p>
       </div>
 
       {error && (
@@ -186,23 +196,23 @@ export function PersonalHealthPage() {
       ) : (
         <Tabs defaultValue="reports">
           <TabsList>
-            <TabsTrigger value="reports">Reports ({reports.length})</TabsTrigger>
-            <TabsTrigger value="chats">Conversations ({chats.length})</TabsTrigger>
-            <TabsTrigger value="images">Images ({images.length})</TabsTrigger>
-            <TabsTrigger value="activity">Activity ({activities.length})</TabsTrigger>
-            <TabsTrigger value="profile">Profile & Security</TabsTrigger>
+            <TabsTrigger value="reports">{t("rec.tabReports")} ({reports.length})</TabsTrigger>
+            <TabsTrigger value="chats">{t("rec.tabChats")} ({chats.length})</TabsTrigger>
+            <TabsTrigger value="images">{t("rec.tabImages")} ({images.length})</TabsTrigger>
+            <TabsTrigger value="activity">{t("rec.tabActivity")} ({activities.length})</TabsTrigger>
+            <TabsTrigger value="profile">{t("rec.tabProfile")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="reports">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-medical-blue" /> Uploaded Reports & Summaries
+                  <FileText className="h-5 w-5 text-medical-blue" /> {t("rec.uploadedReports")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {reports.length === 0 ? (
-                  <p className="text-sm text-slate-500">No medical reports stored.</p>
+                  <p className="text-sm text-slate-500">{t("rep.none")}</p>
                 ) : (
                   reports.map((report) => (
                     <div
@@ -234,7 +244,7 @@ export function PersonalHealthPage() {
                             )
                           }
                         >
-                          <Download className="h-3.5 w-3.5" /> File
+                          <Download className="h-3.5 w-3.5" /> {t("rep.original")}
                         </Button>
                         {report.summary && (
                           <Button
@@ -247,7 +257,7 @@ export function PersonalHealthPage() {
                               )
                             }
                           >
-                            <Download className="h-3.5 w-3.5" /> Summary
+                            <Download className="h-3.5 w-3.5" /> {t("rep.summaryMd")}
                           </Button>
                         )}
                         <Button
@@ -269,12 +279,12 @@ export function PersonalHealthPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <MessageSquareHeart className="h-5 w-5 text-medical-blue" /> Saved Conversations
+                  <MessageSquareHeart className="h-5 w-5 text-medical-blue" /> {t("rec.savedChats")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {chats.length === 0 ? (
-                  <p className="text-sm text-slate-500">No saved conversations.</p>
+                  <p className="text-sm text-slate-500">{t("dash.noChats")}</p>
                 ) : (
                   chats.map((chat) => (
                     <div
@@ -284,12 +294,12 @@ export function PersonalHealthPage() {
                       <div>
                         <p className="font-semibold text-slate-900">{chat.title}</p>
                         <p className="text-xs text-slate-500">
-                          {chat.message_count} messages · Updated {formatDateTime(chat.updated_at)}
+                          {chat.message_count} · {formatDateTime(chat.updated_at)}
                         </p>
                       </div>
                       <div className="flex gap-2">
                         <Button size="sm" variant="secondary" asChild>
-                          <Link to={`/dashboard/chat?session=${chat.id}`}>Open Chat</Link>
+                          <Link to={`/dashboard/chat?session=${chat.id}`}>{t("dash.openChat")}</Link>
                         </Button>
                         <Button
                           size="sm"
@@ -310,12 +320,12 @@ export function PersonalHealthPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <ImageIcon className="h-5 w-5 text-medical-blue" /> Uploaded Medical Images
+                  <ImageIcon className="h-5 w-5 text-medical-blue" /> {t("rec.uploadedImages")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {images.length === 0 ? (
-                  <p className="text-sm text-slate-500">No medical images stored.</p>
+                  <p className="text-sm text-slate-500">{t("img.none")}</p>
                 ) : (
                   images.map((img) => (
                     <div
@@ -357,19 +367,19 @@ export function PersonalHealthPage() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-medical-blue" /> Account Activity History
+                    <Activity className="h-5 w-5 text-medical-blue" /> {t("rec.activityTitle")}
                   </CardTitle>
-                  <CardDescription>Audit log of your recent actions</CardDescription>
+                  <CardDescription>{t("rec.activitySub")}</CardDescription>
                 </div>
                 {activities.length > 0 && (
                   <Button size="sm" variant="outline" onClick={() => void clearActivity()}>
-                    Clear History
+                    {t("rec.clearHistory")}
                   </Button>
                 )}
               </CardHeader>
               <CardContent className="space-y-2">
                 {activities.length === 0 ? (
-                  <p className="text-sm text-slate-500">No activity entries recorded.</p>
+                  <p className="text-sm text-slate-500">—</p>
                 ) : (
                   activities.map((act) => (
                     <div
@@ -402,13 +412,13 @@ export function PersonalHealthPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <UserIcon className="h-5 w-5 text-medical-blue" /> Personal Health Profile
+                    <UserIcon className="h-5 w-5 text-medical-blue" /> {t("rec.profileTitle")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSaveProfile} className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="prof-name">Full Name</Label>
+                      <Label htmlFor="prof-name">{t("auth.fullName")}</Label>
                       <Input
                         id="prof-name"
                         value={fullName}
@@ -418,7 +428,7 @@ export function PersonalHealthPage() {
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                       <div className="space-y-1.5">
-                        <Label htmlFor="prof-age">Age</Label>
+                        <Label htmlFor="prof-age">{t("sym.age").replace(" *", "")}</Label>
                         <Input
                           id="prof-age"
                           type="number"
@@ -429,7 +439,7 @@ export function PersonalHealthPage() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="prof-gender">Gender</Label>
+                        <Label htmlFor="prof-gender">{t("sym.gender")}</Label>
                         <Input
                           id="prof-gender"
                           value={gender}
@@ -437,17 +447,17 @@ export function PersonalHealthPage() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="prof-blood">Blood Type</Label>
+                        <Label htmlFor="prof-blood">{t("dash.bloodTypeLabel")}</Label>
                         <Input
                           id="prof-blood"
-                          placeholder="e.g. O+"
+                          placeholder="O+"
                           value={bloodType}
                           onChange={(e) => setBloodType(e.target.value)}
                         />
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="prof-allergies">Allergies</Label>
+                      <Label htmlFor="prof-allergies">{t("dash.allergiesLabel")}</Label>
                       <Textarea
                         id="prof-allergies"
                         rows={2}
@@ -456,7 +466,7 @@ export function PersonalHealthPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="prof-cond">Chronic Conditions</Label>
+                      <Label htmlFor="prof-cond">{t("rec.chronic")}</Label>
                       <Textarea
                         id="prof-cond"
                         rows={2}
@@ -464,9 +474,9 @@ export function PersonalHealthPage() {
                         onChange={(e) => setChronicConditions(e.target.value)}
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                       <div className="space-y-1.5">
-                        <Label htmlFor="prof-emerg">Emergency Contact</Label>
+                        <Label htmlFor="prof-emerg">{t("rec.emergencyContact")}</Label>
                         <Input
                           id="prof-emerg"
                           value={emergencyContact}
@@ -474,7 +484,7 @@ export function PersonalHealthPage() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="prof-units">Preferred Units</Label>
+                        <Label htmlFor="prof-units">{t("rec.preferredUnits")}</Label>
                         <select
                           id="prof-units"
                           value={preferredUnits}
@@ -487,12 +497,25 @@ export function PersonalHealthPage() {
                           <option value="imperial">Imperial</option>
                         </select>
                       </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="prof-lang">{t("rec.preferredLang")}</Label>
+                        <select
+                          id="prof-lang"
+                          value={preferredLang}
+                          onChange={(e) => setPreferredLang(e.target.value as LanguageCode)}
+                          className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+                        >
+                          <option value="en">English</option>
+                          <option value="te">తెలుగు (Telugu)</option>
+                          <option value="hi">हिन्दी (Hindi)</option>
+                        </select>
+                      </div>
                     </div>
                     <Button type="submit" disabled={savingProfile}>
                       {savingProfile ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        "Save Profile"
+                        t("rec.saveProfile")
                       )}
                     </Button>
                   </form>
@@ -502,13 +525,13 @@ export function PersonalHealthPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-medical-cyan" /> Security & Password
+                    <Shield className="h-5 w-5 text-medical-cyan" /> {t("rec.securityTitle")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleChangePassword} className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="sec-cur">Current Password</Label>
+                      <Label htmlFor="sec-cur">{t("rec.currentPw")}</Label>
                       <Input
                         id="sec-cur"
                         type="password"
@@ -518,13 +541,12 @@ export function PersonalHealthPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="sec-new">New Password</Label>
+                      <Label htmlFor="sec-new">{t("rec.newPw")}</Label>
                       <Input
                         id="sec-new"
                         type="password"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="8+ chars, upper, lower, number, symbol"
                         required
                       />
                     </div>
@@ -532,7 +554,7 @@ export function PersonalHealthPage() {
                       {savingPassword ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        "Update Password"
+                        t("rec.updatePassword")
                       )}
                     </Button>
                   </form>

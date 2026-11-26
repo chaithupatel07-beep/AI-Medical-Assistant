@@ -3,10 +3,10 @@
 from datetime import datetime, timezone
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.safety import EMERGENCY_GUIDANCE, GENERAL_DISCLAIMER, detect_emergency_signals
+from app.core.safety import detect_emergency_signals, get_disclaimer, normalize_language
 from app.core.security import get_current_user
 from app.database.session import get_db
 from app.models.entities import ChatMessage, ChatSession, User
@@ -23,14 +23,32 @@ from app.utils.activity import log_activity
 
 router = APIRouter(prefix="/api/chat", tags=["AI Medical Chatbot"])
 
-SUGGESTED_QUESTIONS: List[str] = [
-    "What does Hemoglobin A1c (HbA1c) measure in simple terms?",
-    "How can I prepare questions before my next doctor visit?",
-    "What is the difference between systolic and diastolic blood pressure?",
-    "When should a fever or cough be evaluated by a doctor?",
-    "What are warning signs of dehydration to watch for?",
-    "How do LDL, HDL, and triglycerides differ in a lipid panel?",
-]
+SUGGESTED_QUESTIONS_BY_LANG = {
+    "en": [
+        "What does Hemoglobin A1c (HbA1c) measure in simple terms?",
+        "How can I prepare questions before my next doctor visit?",
+        "What is the difference between systolic and diastolic blood pressure?",
+        "When should a fever or cough be evaluated by a doctor?",
+        "What are warning signs of dehydration to watch for?",
+        "How do LDL, HDL, and triglycerides differ in a lipid panel?",
+    ],
+    "te": [
+        "హెమోగ్లోబిన్ A1c (HbA1c) పరీక్ష ఏమి కొలుస్తుందో సరళంగా చెప్పండి?",
+        "డాక్టర్ దగ్గరకు వెళ్లే ముందు ఎలాంటి ప్రశ్నలు సిద్ధం చేసుకోవాలి?",
+        "సిస్టోలిక్ మరియు డయాస్టోలిక్ రక్తపోటు (BP) మధ్య తేడా ఏమిటి?",
+        "జ్వరం లేదా దగ్గు ఉన్నప్పుడు ఎప్పుడు డాక్టర్‌ను కలవాలి?",
+        "శరీరంలో నీటి కొరత (డీహైడ్రేషన్) హెచ్చరిక సంకేతాలు ఏమిటి?",
+        "లిపిడ్ ప్రొఫైల్‌లో LDL, HDL మరియు ట్రైగ్లిజరైడ్స్ అంటే ఏమిటి?",
+    ],
+    "hi": [
+        "हीमोग्लोबिन A1c (HbA1c) जांच क्या मापती है, सरल भाषा में समझाएं?",
+        "डॉक्टर से मिलने से पहले कौन से सवाल तैयार करने चाहिए?",
+        "सिस्टोलिक और डायस्टोलिक ब्लड प्रेशर (BP) में क्या अंतर है?",
+        "बुखार या खांसी होने पर डॉक्टर को कब दिखाना चाहिए?",
+        "डीहाइड्रेशन (पानी की कमी) के चेतावनी संकेत क्या होते हैं?",
+        "लिपिड प्रोफाइल में LDL, HDL और ट्राइग्लिसराइड्स में क्या अंतर है?",
+    ],
+}
 
 
 def _serialize_session(session: ChatSession) -> ChatSessionResponse:
@@ -69,8 +87,9 @@ def _get_owned_session(db: Session, session_id: str, user_id: str) -> ChatSessio
 
 
 @router.get("/suggested-questions")
-def get_suggested_questions():
-    return {"questions": SUGGESTED_QUESTIONS}
+def get_suggested_questions(lang: str = Query("en")):
+    code = normalize_language(lang)
+    return {"questions": SUGGESTED_QUESTIONS_BY_LANG[code]}
 
 
 @router.get("/sessions", response_model=List[ChatSessionResponse])
@@ -137,13 +156,15 @@ async def send_message(
     if not content:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message cannot be empty.")
 
-    emergency_detected, emergency_reasons = detect_emergency_signals(content)
+    lang = normalize_language(payload.language)
+    emergency_detected, emergency_reasons = detect_emergency_signals(content, lang)
     history = [{"role": m.role, "content": m.content} for m in session.messages if m.role in ("user", "assistant")]
 
     reply_text, model_used = await generate_chat_reply(
         history=history,
         user_message=content,
         emergency_detected=emergency_detected,
+        language=lang,
     )
 
     if session.title == "New Health Conversation" and len(session.messages) == 0:
@@ -187,9 +208,9 @@ async def send_message(
         assistant_message=_serialize_message(assistant_msg),
         emergency_detected=emergency_detected,
         emergency_reasons=emergency_reasons,
-        emergency_banner=EMERGENCY_GUIDANCE if emergency_detected else None,
+        emergency_banner=get_disclaimer("emergency", lang) if emergency_detected else None,
         ai_model=model_used,
-        disclaimer=GENERAL_DISCLAIMER,
+        disclaimer=get_disclaimer("general", lang),
     )
 
 

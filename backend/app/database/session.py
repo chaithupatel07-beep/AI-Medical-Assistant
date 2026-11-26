@@ -1,6 +1,6 @@
 """SQLAlchemy engine, session factory, and initialization for SQLite & PostgreSQL/Supabase."""
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.core.config import get_settings
@@ -39,7 +39,17 @@ def get_db():
 
 
 def init_db() -> None:
-    """Create all tables if they do not exist."""
+    """Create all tables if they do not exist and apply safe additive migrations."""
     import app.models.entities  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    inspector = inspect(engine)
+    if inspector.has_table("user_profiles"):
+        cols = {col["name"] for col in inspector.get_columns("user_profiles")}
+        if "preferred_language" not in cols:
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE user_profiles ADD COLUMN preferred_language VARCHAR(8) NOT NULL DEFAULT 'en'"
+                    )
+                )

@@ -6,14 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from "@/hooks/useLanguage";
 import { api } from "@/services/api";
 import type { LibraryArticle } from "@/types/api";
 
 export function HealthLibraryPage() {
+  const { language, t } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialCategory = searchParams.get("category") || "All";
 
   const [categories, setCategories] = useState<string[]>([]);
+  const [categoryLabels, setCategoryLabels] = useState<Record<string, string>>({});
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [query, setQuery] = useState("");
   const [articles, setArticles] = useState<LibraryArticle[]>([]);
@@ -25,14 +28,19 @@ export function HealthLibraryPage() {
     setLoading(true);
     setError(null);
     api
-      .listLibraryArticles(selectedCategory, query)
+      .listLibraryArticles(selectedCategory, query, language)
       .then((res) => {
         setCategories(res.categories);
+        setCategoryLabels(res.category_labels || {});
         setArticles(res.articles);
+        if (activeArticle) {
+          const updated = res.articles.find((a) => a.id === activeArticle.id);
+          if (updated) setActiveArticle(updated);
+        }
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load library."))
       .finally(() => setLoading(false));
-  }, [selectedCategory, query]);
+  }, [selectedCategory, query, language]);
 
   const selectCategory = (cat: string) => {
     setSelectedCategory(cat);
@@ -49,17 +57,15 @@ export function HealthLibraryPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="flex items-center gap-2.5 text-2xl font-bold text-slate-900 sm:text-3xl">
-            <BookOpen className="h-7 w-7 text-medical-blue" /> Health Information Library
+            <BookOpen className="h-7 w-7 text-medical-blue" /> {t("lib.title")}
           </h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Evidence-based educational guides curated with links to MedlinePlus, WHO, and CDC.
-          </p>
+          <p className="mt-1 text-sm text-slate-600">{t("lib.sub")}</p>
         </div>
 
         <div className="relative w-full sm:w-80">
           <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
           <Input
-            placeholder="Search health topics..."
+            placeholder={t("lib.search")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="pl-9"
@@ -75,7 +81,7 @@ export function HealthLibraryPage() {
             variant={selectedCategory === cat ? "default" : "outline"}
             onClick={() => selectCategory(cat)}
           >
-            {cat}
+            {cat === "All" ? t("lib.all") : categoryLabels[cat] || cat}
           </Button>
         ))}
       </div>
@@ -91,16 +97,14 @@ export function HealthLibraryPage() {
           <Loader2 className="h-6 w-6 animate-spin text-medical-blue" />
         </div>
       ) : articles.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-slate-500">
-          No health articles matched your filter. Try clearing the search box or switching category.
-        </Card>
+        <Card className="p-8 text-center text-sm text-slate-500">{t("lib.none")}</Card>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {articles.map((article) => (
             <Card key={article.id} className="flex flex-col justify-between hover:shadow-soft">
               <CardHeader>
                 <div className="flex items-center justify-between gap-2">
-                  <Badge variant="cyan">{article.category}</Badge>
+                  <Badge variant="cyan">{article.category_label || article.category}</Badge>
                   <span className="text-xs text-slate-500">{article.read_time}</span>
                 </div>
                 <CardTitle className="mt-2 text-lg">{article.title}</CardTitle>
@@ -109,7 +113,7 @@ export function HealthLibraryPage() {
               <CardContent className="flex items-center justify-between gap-2 pt-2">
                 <span className="text-xs font-medium text-slate-500">{article.source_name}</span>
                 <Button size="sm" variant="secondary" onClick={() => setActiveArticle(article)}>
-                  Read Article
+                  {t("lib.readArticle")}
                 </Button>
               </CardContent>
             </Card>
@@ -122,10 +126,10 @@ export function HealthLibraryPage() {
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
-                <Badge variant="cyan">{activeArticle.category}</Badge>
+                <Badge variant="cyan">{activeArticle.category_label || activeArticle.category}</Badge>
                 <h2 className="text-2xl font-bold text-slate-900">{activeArticle.title}</h2>
                 <p className="text-xs text-slate-500">
-                  {activeArticle.read_time} · Source: {activeArticle.source_name}
+                  {activeArticle.read_time} · {activeArticle.source_name}
                 </p>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setActiveArticle(null)}>
@@ -139,7 +143,7 @@ export function HealthLibraryPage() {
               ))}
 
               <div className="rounded-xl bg-blue-50/70 p-4">
-                <h3 className="font-semibold text-slate-900">Key Takeaways</h3>
+                <h3 className="font-semibold text-slate-900">{t("lib.takeaways")}</h3>
                 <ul className="mt-2 list-disc space-y-1 pl-5">
                   {activeArticle.key_takeaways.map((item) => (
                     <li key={item}>{item}</li>
@@ -148,7 +152,7 @@ export function HealthLibraryPage() {
               </div>
 
               <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
-                <h3 className="font-semibold text-amber-900">When to Consult a Healthcare Professional</h3>
+                <h3 className="font-semibold text-amber-900">{t("lib.whenDoctor")}</h3>
                 <p className="mt-1 text-amber-900">{activeArticle.when_to_see_doctor}</p>
               </div>
 
@@ -159,10 +163,10 @@ export function HealthLibraryPage() {
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-medical-blue hover:underline"
                 >
-                  Open Trusted Source ({activeArticle.source_name}) <ExternalLink className="h-4 w-4" />
+                  {t("lib.openSource")} ({activeArticle.source_name}) <ExternalLink className="h-4 w-4" />
                 </a>
                 <Button variant="outline" onClick={() => setActiveArticle(null)}>
-                  Close
+                  {t("lib.close")}
                 </Button>
               </div>
             </div>

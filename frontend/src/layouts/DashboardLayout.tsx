@@ -14,24 +14,27 @@ import {
 } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { BrandLogo } from "@/components/BrandLogo";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
 import { cn } from "@/utils/cn";
-
-const navItems = [
-  { to: "/dashboard", label: "Overview", icon: LayoutDashboard, end: true },
-  { to: "/dashboard/chat", label: "AI Medical Chat", icon: MessageSquareHeart },
-  { to: "/dashboard/symptoms", label: "Symptom Info", icon: Stethoscope },
-  { to: "/dashboard/reports", label: "Report Summarizer", icon: FileText },
-  { to: "/dashboard/images", label: "Image Analysis", icon: ImageIcon },
-  { to: "/dashboard/library", label: "Health Library", icon: BookOpen },
-  { to: "/dashboard/records", label: "Personal Health", icon: FolderHeart },
-];
 
 export function DashboardLayout() {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const navItems = [
+    { to: "/dashboard", label: t("nav.overview"), icon: LayoutDashboard, end: true },
+    { to: "/dashboard/chat", label: t("nav.chat"), icon: MessageSquareHeart },
+    { to: "/dashboard/symptoms", label: t("nav.symptoms"), icon: Stethoscope },
+    { to: "/dashboard/reports", label: t("nav.reports"), icon: FileText },
+    { to: "/dashboard/images", label: t("nav.images"), icon: ImageIcon },
+    { to: "/dashboard/library", label: t("nav.library"), icon: BookOpen },
+    { to: "/dashboard/records", label: t("nav.records"), icon: FolderHeart },
+  ];
 
   const handleLogout = async () => {
     await logout();
@@ -40,10 +43,12 @@ export function DashboardLayout() {
 
   const sidebarContent = (
     <div className="flex h-full flex-col justify-between p-4">
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div className="px-1 pt-1">
           <BrandLogo to="/dashboard" compact />
         </div>
+
+        <LanguageSwitcher compact />
 
         <nav className="space-y-1">
           {navItems.map((item) => {
@@ -75,11 +80,9 @@ export function DashboardLayout() {
         <div className="rounded-xl bg-blue-50/70 p-3 text-xs text-slate-600">
           <div className="flex items-center gap-1.5 font-semibold text-medical-blue">
             <Activity className="h-3.5 w-3.5" />
-            <span>Medical Safety</span>
+            <span>{t("sidebar.safetyTitle")}</span>
           </div>
-          <p className="mt-1 leading-relaxed">
-            Educational support only. For emergencies, call local emergency services immediately.
-          </p>
+          <p className="mt-1 leading-relaxed">{t("sidebar.safetyText")}</p>
         </div>
 
         <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
@@ -91,8 +94,8 @@ export function DashboardLayout() {
             variant="ghost"
             size="icon"
             onClick={handleLogout}
-            title="Sign Out"
-            aria-label="Sign Out"
+            title={t("nav.signOut")}
+            aria-label={t("nav.signOut")}
           >
             <LogOut className="h-4 w-4 text-slate-600" />
           </Button>
@@ -128,16 +131,19 @@ export function DashboardLayout() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-blue-100 bg-white/90 px-4 backdrop-blur-md lg:hidden">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-blue-100 bg-white/90 px-4 backdrop-blur-md lg:hidden">
           <BrandLogo to="/dashboard" compact />
-          <button
-            type="button"
-            className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open navigation menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <button
+              type="button"
+              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open navigation menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8">

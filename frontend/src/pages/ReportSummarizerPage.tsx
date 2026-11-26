@@ -1,12 +1,5 @@
 import { DragEvent, useEffect, useState } from "react";
-import {
-  Download,
-  FileText,
-  Loader2,
-  Sparkles,
-  Trash2,
-  UploadCloud,
-} from "lucide-react";
+import { Download, FileText, Loader2, Sparkles, Trash2, UploadCloud } from "lucide-react";
 import { AiConfigNotice } from "@/components/AiConfigNotice";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useBlobUrl } from "@/hooks/useBlobUrl";
+import { useLanguage } from "@/hooks/useLanguage";
 import { api, downloadProtectedFile } from "@/services/api";
 import type { LabMarker, MedicalReport } from "@/types/api";
 import { formatBytes, formatDateTime } from "@/utils/format";
@@ -28,6 +22,7 @@ function statusBadgeVariant(status: LabMarker["status"]) {
 }
 
 export function ReportSummarizerPage() {
+  const { language, t } = useLanguage();
   const [reports, setReports] = useState<MedicalReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<MedicalReport | null>(null);
   const [aiConfigured, setAiConfigured] = useState(true);
@@ -84,7 +79,7 @@ export function ReportSummarizerPage() {
     setError(null);
     setSummarizing(true);
     try {
-      const updated = await api.summarizeReport(reportId);
+      const updated = await api.summarizeReport(reportId, language);
       setReports((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
       setSelectedReport(updated);
     } catch (err) {
@@ -112,12 +107,9 @@ export function ReportSummarizerPage() {
     <div className="space-y-6">
       <div>
         <h1 className="flex items-center gap-2.5 text-2xl font-bold text-slate-900">
-          <FileText className="h-6 w-6 text-medical-blue" /> Medical Report Summarizer
+          <FileText className="h-6 w-6 text-medical-blue" /> {t("rep.title")}
         </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Upload PDF, JPG, JPEG, or PNG reports to extract text, inspect lab markers against
-          report-supplied reference ranges, and generate plain-English summaries.
-        </p>
+        <p className="mt-1 text-sm text-slate-600">{t("rep.sub")}</p>
       </div>
 
       <AiConfigNotice configured={aiConfigured} />
@@ -137,19 +129,14 @@ export function ReportSummarizerPage() {
             }}
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
-            className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-colors ${
-              dragging
+            className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-colors ${dragging
                 ? "border-medical-blue bg-blue-50/70"
                 : "border-blue-200 bg-slate-50/60 hover:border-medical-blue"
-            }`}
+              }`}
           >
             <UploadCloud className="h-10 w-10 text-medical-blue" />
-            <p className="mt-3 text-sm font-semibold text-slate-900">
-              Drag & drop a medical report here, or click to browse
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Accepted formats: PDF, JPG, JPEG, PNG (Max 10 MB)
-            </p>
+            <p className="mt-3 text-sm font-semibold text-slate-900">{t("rep.drop")}</p>
+            <p className="mt-1 text-xs text-slate-500">{t("rep.formats")}</p>
             <input
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
@@ -165,7 +152,7 @@ export function ReportSummarizerPage() {
           {uploading && (
             <div className="mt-4 space-y-2">
               <div className="flex justify-between text-xs font-medium text-slate-600">
-                <span>Uploading and extracting report text...</span>
+                <span>{t("rep.uploading")}</span>
                 <span>{uploadProgress}%</span>
               </div>
               <Progress value={uploadProgress} />
@@ -177,8 +164,8 @@ export function ReportSummarizerPage() {
       <div className="grid gap-6 lg:grid-cols-12">
         <Card className="lg:col-span-4">
           <CardHeader>
-            <CardTitle className="text-base">Your Uploaded Reports</CardTitle>
-            <CardDescription>Select a report to view preview & summary</CardDescription>
+            <CardTitle className="text-base">{t("rep.yourReports")}</CardTitle>
+            <CardDescription>{t("rep.selectPrompt")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {loading ? (
@@ -186,16 +173,15 @@ export function ReportSummarizerPage() {
                 <Loader2 className="h-5 w-5 animate-spin text-medical-blue" />
               </div>
             ) : reports.length === 0 ? (
-              <p className="text-sm text-slate-500">No medical reports uploaded yet.</p>
+              <p className="text-sm text-slate-500">{t("rep.none")}</p>
             ) : (
               reports.map((report) => (
                 <div
                   key={report.id}
-                  className={`flex items-center justify-between gap-2 rounded-xl border p-3 ${
-                    selectedReport?.id === report.id
+                  className={`flex items-center justify-between gap-2 rounded-xl border p-3 ${selectedReport?.id === report.id
                       ? "border-medical-blue bg-blue-50/60"
                       : "border-slate-100 hover:bg-slate-50"
-                  }`}
+                    }`}
                 >
                   <button
                     type="button"
@@ -226,10 +212,7 @@ export function ReportSummarizerPage() {
 
         <div className="space-y-6 lg:col-span-8">
           {!selectedReport ? (
-            <Card className="p-8 text-center text-sm text-slate-500">
-              Upload or select a medical report to preview extracted values and generate an AI
-              educational summary.
-            </Card>
+            <Card className="p-8 text-center text-sm text-slate-500">{t("rep.empty")}</Card>
           ) : (
             <>
               <Card>
@@ -237,7 +220,7 @@ export function ReportSummarizerPage() {
                   <div>
                     <CardTitle>{selectedReport.original_filename}</CardTitle>
                     <CardDescription>
-                      Extraction: {selectedReport.extraction_method} ·{" "}
+                      {selectedReport.extraction_method} ·{" "}
                       {formatBytes(selectedReport.file_size_bytes)}
                     </CardDescription>
                   </div>
@@ -252,7 +235,7 @@ export function ReportSummarizerPage() {
                         )
                       }
                     >
-                      <Download className="h-4 w-4" /> Original
+                      <Download className="h-4 w-4" /> {t("rep.original")}
                     </Button>
                     {selectedReport.summary && (
                       <Button
@@ -265,7 +248,7 @@ export function ReportSummarizerPage() {
                           )
                         }
                       >
-                        <Download className="h-4 w-4" /> Summary (.md)
+                        <Download className="h-4 w-4" /> {t("rep.summaryMd")}
                       </Button>
                     )}
                     <Button
@@ -275,12 +258,12 @@ export function ReportSummarizerPage() {
                     >
                       {summarizing ? (
                         <>
-                          <Loader2 className="h-4 w-4 animate-spin" /> Summarizing...
+                          <Loader2 className="h-4 w-4 animate-spin" /> {t("rep.summarizing")}
                         </>
                       ) : (
                         <>
                           <Sparkles className="h-4 w-4" />
-                          {selectedReport.summary ? "Regenerate AI Summary" : "Summarize with AI"}
+                          {selectedReport.summary ? t("rep.regenerate") : t("rep.summarize")}
                         </>
                       )}
                     </Button>
@@ -290,7 +273,7 @@ export function ReportSummarizerPage() {
                 <CardContent className="space-y-4">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Secure File Preview
+                      {t("rep.preview")}
                     </p>
                     {previewLoading ? (
                       <div className="flex h-48 items-center justify-center">
@@ -317,7 +300,7 @@ export function ReportSummarizerPage() {
 
                   <div>
                     <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Extracted Report Text
+                      {t("rep.extracted")}
                     </p>
                     {selectedReport.extracted_text ? (
                       <pre className="max-h-44 overflow-auto whitespace-pre-wrap rounded-xl border border-slate-200 bg-white p-3 font-mono text-xs text-slate-700">
@@ -325,8 +308,7 @@ export function ReportSummarizerPage() {
                       </pre>
                     ) : (
                       <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                        No embedded text was found. For scanned PDFs or images, configure{" "}
-                        <code>OPENAI_API_KEY</code> (Vision OCR) or install Tesseract OCR.
+                        {t("rep.noText")}
                       </p>
                     )}
                   </div>
@@ -337,7 +319,7 @@ export function ReportSummarizerPage() {
                 <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle>AI Educational Report Summary</CardTitle>
+                      <CardTitle>{t("rep.aiSummary")}</CardTitle>
                       {selectedReport.summary.ai_model && (
                         <Badge>{selectedReport.summary.ai_model}</Badge>
                       )}
@@ -351,17 +333,17 @@ export function ReportSummarizerPage() {
                     {selectedReport.summary.lab_markers.length > 0 && (
                       <div>
                         <h3 className="mb-2 font-semibold text-slate-900">
-                          Laboratory Markers (Using Report-Supplied Reference Ranges Only)
+                          {t("rep.markersTitle")}
                         </h3>
                         <div className="overflow-x-auto rounded-xl border border-slate-200">
                           <table className="w-full text-left text-xs sm:text-sm">
                             <thead className="bg-slate-50 text-slate-600">
                               <tr>
-                                <th className="p-3 font-semibold">Marker</th>
-                                <th className="p-3 font-semibold">Value</th>
-                                <th className="p-3 font-semibold">Reference Range</th>
-                                <th className="p-3 font-semibold">Status</th>
-                                <th className="p-3 font-semibold">Simple Explanation</th>
+                                <th className="p-3 font-semibold">{t("rep.colMarker")}</th>
+                                <th className="p-3 font-semibold">{t("rep.colValue")}</th>
+                                <th className="p-3 font-semibold">{t("rep.colRange")}</th>
+                                <th className="p-3 font-semibold">{t("rep.colStatus")}</th>
+                                <th className="p-3 font-semibold">{t("rep.colExplain")}</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -388,7 +370,9 @@ export function ReportSummarizerPage() {
 
                     {selectedReport.summary.medical_terms.length > 0 && (
                       <div>
-                        <h3 className="mb-2 font-semibold text-slate-900">Medical Terms Explained</h3>
+                        <h3 className="mb-2 font-semibold text-slate-900">
+                          {t("rep.termsTitle")}
+                        </h3>
                         <div className="grid gap-2.5 sm:grid-cols-2">
                           {selectedReport.summary.medical_terms.map((item, idx) => (
                             <div key={idx} className="rounded-xl border border-slate-200 p-3">
@@ -405,7 +389,7 @@ export function ReportSummarizerPage() {
                     {selectedReport.summary.questions_for_doctor.length > 0 && (
                       <div>
                         <h3 className="mb-1.5 font-semibold text-slate-900">
-                          Questions to Ask Your Doctor
+                          {t("rep.questionsTitle")}
                         </h3>
                         <ul className="list-disc space-y-1 pl-5">
                           {selectedReport.summary.questions_for_doctor.map((q, idx) => (
