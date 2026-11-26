@@ -119,7 +119,21 @@ npm run build
 
 This repository is configured so **every part of the application deploys together** (React SPA + FastAPI API + PostgreSQL + Tesseract OCR + AI integration):
 
-### Option A: Single-Platform Full-Stack Deploy (Render Blueprint / Railway / Docker)
+### Option A: Single-Project Full-Stack Deploy on Vercel (`vercel.json` + `api/index.py`)
+
+When importing this repository on **Vercel**:
+1. Keep **Root Directory** at the repository root (`.`) — do **not** set it to `backend` or `frontend` alone, or only half the project will deploy.
+2. Set **Framework Preset** to **Other** (Vercel will automatically use root `vercel.json`, which builds `frontend/dist` AND deploys the FastAPI backend via `api/index.py` under `/api/*`).
+3. Add **Environment Variables** in Vercel:
+   - `DATABASE_URL` = your Supabase or Neon PostgreSQL connection string (recommended for persistent storage; otherwise falls back to ephemeral `/tmp` SQLite)
+   - `JWT_SECRET_KEY` = a strong random 32+ char secret
+   - `AI_PROVIDER` = `gemini` (or `openai`)
+   - `OPENAI_API_KEY` = your API key
+   - `OPENAI_BASE_URL` = `https://generativelanguage.googleapis.com/v1beta/openai/` (if using Gemini)
+   - `OPENAI_CHAT_MODEL` = `gemini-2.5-flash` (or `gpt-4o-mini`)
+   - `OPENAI_VISION_MODEL` = `gemini-2.5-flash` (or `gpt-4o-mini`)
+
+### Option B: Single-Platform Full-Stack Deploy (Render Blueprint / Railway / Docker)
 
 - **Render (`render.yaml`)**: Connect this GitHub repo as a **Render Blueprint**. It automatically provisions both:
   1. `ai-medical-assistant-db` (PostgreSQL)

@@ -1,18 +1,21 @@
 """Application configuration loaded from backend/.env or environment variables."""
 
 from functools import lru_cache
+import os
 from pathlib import Path
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parents[2]
+IS_VERCEL = bool(os.environ.get("VERCEL"))
+DEFAULT_WRITABLE_DIR = Path("/tmp/ai_medical_assistant") if IS_VERCEL else BASE_DIR
 
 
 class Settings(BaseSettings):
     """Server configuration settings. AI API keys remain strictly server-side."""
 
     app_name: str = "AI Medical Assistant"
-    app_env: str = "development"
+    app_env: str = "production" if IS_VERCEL else "development"
     port: int = 8000
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
@@ -20,7 +23,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440
 
-    database_url: str = f"sqlite:///{(BASE_DIR / 'ai_medical_assistant.db').as_posix()}"
+    database_url: str = f"sqlite:///{(DEFAULT_WRITABLE_DIR / 'ai_medical_assistant.db').as_posix()}"
 
     ai_provider: str = "openai"
     openai_api_key: str = ""
@@ -30,7 +33,7 @@ class Settings(BaseSettings):
 
     tesseract_cmd: str = ""
     max_upload_size_mb: int = 10
-    upload_dir: str = str(BASE_DIR / "uploads")
+    upload_dir: str = str(DEFAULT_WRITABLE_DIR / "uploads")
     frontend_dist_dir: str = ""
 
     model_config = SettingsConfigDict(

@@ -19,14 +19,21 @@ logger = setup_logging()
 settings = get_settings()
 
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
+def _bootstrap_runtime() -> None:
     settings.upload_path.mkdir(parents=True, exist_ok=True)
     (settings.upload_path / "reports").mkdir(parents=True, exist_ok=True)
     (settings.upload_path / "images").mkdir(parents=True, exist_ok=True)
     init_db()
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    _bootstrap_runtime()
     logger.info("AI Medical Assistant API started (ai_configured=%s)", settings.is_ai_configured)
     yield
+
+
+_bootstrap_runtime()
 
 
 app = FastAPI(
