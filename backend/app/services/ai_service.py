@@ -8,6 +8,14 @@ from typing import Any, Dict, List
 from fastapi import HTTPException, status
 from openai import APIStatusError, AsyncOpenAI, AuthenticationError, RateLimitError
 
+from app.ai.local_engine import (
+    OLLAMA_BASE_URL,
+    analyze_image_locally,
+    detect_ollama_model,
+    generate_rule_based_chat_reply,
+    generate_rule_based_report_summary,
+    generate_rule_based_symptom_guidance,
+)
 from app.core.config import get_settings
 from app.core.safety import (
     get_disclaimer,
@@ -115,14 +123,32 @@ def _get_client() -> AsyncOpenAI:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
-                "AI service is not configured on the server. "
-                "Set OPENAI_API_KEY or GEMINI_API_KEY in your server environment variables (or backend/.env) and redeploy/restart."
+                "Cloud AI API key is not configured on the server."
             ),
         )
     return AsyncOpenAI(
         api_key=settings.effective_api_key,
         base_url=settings.effective_base_url,
     )
+
+
+async def _resolve_ai_target(vision: bool = False) -> tuple[AsyncOpenAI | None, str, str]:
+    """Return (client, model_name, mode) where mode is 'cloud_ai' | 'ollama_local' | 'built_in_offline'."""
+    settings = get_settings()
+    if settings.is_ai_configured:
+        model = settings.effective_vision_model if vision else settings.effective_chat_model
+        return _get_client(), model, "cloud_ai"
+
+    ollama_base = (settings.ollama_base_url or OLLAMA_BASE_URL).rstrip("/")
+    ollama_model = await detect_ollama_model(settings.ollama_model or None)
+    if ollama_model:
+        client = AsyncOpenAI(
+            api_key="ollama",
+            base_url=f"{ollama_base}/v1",
+        )
+        return client, ollama_model, "ollama_local"
+
+    return None, "", "built_in_offline"
 
 
 def _raise_provider_error(exc: Exception, fallback_detail: str) -> None:
@@ -157,11 +183,18 @@ def _parse_json_response(raw_content: str) -> Dict[str, Any]:
         if lines and lines[-1].strip() == "```":
             lines = lines[:-1]
         text = "\n".join(lines).strip()
-    return json.loads(text)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end > start:
+            return json.loads(text[start : end + 1])
+        raise
 
 
-def _provider_extra_kwargs(settings: Any) -> Dict[str, Any]:
-    if (
+def _provider_extra_kwargs(settings: Any, mode: str = "cloud_ai") -> Dict[str, Any]:
+    if mode == "cloud_ai" and (
         settings.effective_provider.lower() == "gemini"
         or "generativelanguage.googleapis.com" in settings.effective_base_url
     ):
@@ -176,8 +209,11 @@ async def generate_chat_reply(
     language: str = "en",
 ) -> tuple[str, str]:
     settings = get_settings()
-    client = _get_client()
     lang = normalize_language(language)
+    client, model_name, mode = await _resolve_ai_target(vision=False)
+
+    if mode == "built_in_offline" or client is None:
+        return generate_rule_based_chat_reply(user_message, emergency_detected, lang)
 
     messages: List[Dict[str, str]] = [
         {"role": "system", "content": f"{CHAT_SYSTEM_PROMPT}\n\nLANGUAGE REQUIREMENT:\n{LANGUAGE_DIRECTIVES[lang]}"}
@@ -198,11 +234,11 @@ async def generate_chat_reply(
 
     try:
         response = await client.chat.completions.create(
-            model=settings.effective_chat_model,
+            model=model_name,
             messages=messages,  # type: ignore[arg-type]
             temperature=0.2,
             max_tokens=2048,
-            **_provider_extra_kwargs(settings),
+            **_provider_extra_kwargs(settings, mode),
         )
         content = (response.choices[0].message.content or "").strip()
         if not content:
@@ -210,14 +246,48 @@ async def generate_chat_reply(
         emergency_text = get_disclaimer("emergency", lang)
         if emergency_detected and "112" not in content and "emergency" not in content.lower():
             content = f"**{emergency_text}**\n\n{content}"
-        return content, settings.effective_chat_model
+        return content, model_name
     except HTTPException:
         raise
     except Exception as exc:
+        if mode == "ollama_local":
+            logger.warning("Local Ollama chat failed (%s); falling back to built-in offline engine.", exc)
+            return generate_rule_based_chat_reply(user_message, emergency_detected, lang)
         _raise_provider_error(
             exc,
             "Failed to generate response from the configured AI provider. Check your API key and model settings.",
         )
+
+
+def _normalize_symptom_payload(
+    parsed: Dict[str, Any],
+    emergency_detected: bool,
+    emergency_reasons: List[str],
+    lang: str,
+) -> Dict[str, Any]:
+    parsed["educational_overview"] = str(parsed.get("educational_overview") or "")
+    explanations = parsed.get("possible_explanations")
+    parsed["possible_explanations"] = (
+        [
+            {
+                "title": str(item.get("title", "General possibility")) if isinstance(item, dict) else "General possibility",
+                "description": str(item.get("description", "")) if isinstance(item, dict) else str(item),
+            }
+            for item in explanations
+        ]
+        if isinstance(explanations, list)
+        else []
+    )
+    for list_key in ("recommended_next_steps", "warning_signs", "questions_for_doctor"):
+        val = parsed.get(list_key)
+        parsed[list_key] = [str(x) for x in val] if isinstance(val, list) else []
+    parsed["when_to_consult_doctor"] = str(parsed.get("when_to_consult_doctor") or "")
+    parsed["emergency_detected"] = emergency_detected
+    parsed["emergency_reasons"] = emergency_reasons
+    if emergency_detected:
+        parsed["emergency_banner"] = get_disclaimer("emergency", lang)
+    parsed["disclaimer"] = get_disclaimer("general", lang)
+    return parsed
 
 
 async def generate_symptom_guidance(
@@ -227,8 +297,11 @@ async def generate_symptom_guidance(
     language: str = "en",
 ) -> tuple[Dict[str, Any], str]:
     settings = get_settings()
-    client = _get_client()
     lang = normalize_language(language)
+    client, model_name, mode = await _resolve_ai_target(vision=False)
+
+    if mode == "built_in_offline" or client is None:
+        return generate_rule_based_symptom_guidance(payload, emergency_detected, emergency_reasons, lang)
 
     user_prompt = (
         f"Age: {payload['age']}\n"
@@ -246,9 +319,11 @@ async def generate_symptom_guidance(
         )
 
     try:
+        kwargs: Dict[str, Any] = dict(_provider_extra_kwargs(settings, mode))
+        if mode == "cloud_ai":
+            kwargs["response_format"] = {"type": "json_object"}
         response = await client.chat.completions.create(
-            model=settings.effective_chat_model,
-            response_format={"type": "json_object"},
+            model=model_name,
             messages=[
                 {
                     "role": "system",
@@ -262,36 +337,60 @@ async def generate_symptom_guidance(
             ],
             temperature=0.2,
             max_tokens=2500,
-            **_provider_extra_kwargs(settings),
+            **kwargs,
         )
         parsed = _parse_json_response(response.choices[0].message.content or "{}")
-        parsed["educational_overview"] = str(parsed.get("educational_overview") or "")
-        explanations = parsed.get("possible_explanations")
-        parsed["possible_explanations"] = (
-            [
-                {
-                    "title": str(item.get("title", "General possibility")) if isinstance(item, dict) else "General possibility",
-                    "description": str(item.get("description", "")) if isinstance(item, dict) else str(item),
-                }
-                for item in explanations
-            ]
-            if isinstance(explanations, list)
-            else []
-        )
-        for list_key in ("recommended_next_steps", "warning_signs", "questions_for_doctor"):
-            val = parsed.get(list_key)
-            parsed[list_key] = [str(x) for x in val] if isinstance(val, list) else []
-        parsed["when_to_consult_doctor"] = str(parsed.get("when_to_consult_doctor") or "")
-        parsed["emergency_detected"] = emergency_detected
-        parsed["emergency_reasons"] = emergency_reasons
-        if emergency_detected:
-            parsed["emergency_banner"] = get_disclaimer("emergency", lang)
-        parsed["disclaimer"] = get_disclaimer("general", lang)
-        return parsed, settings.effective_chat_model
+        return _normalize_symptom_payload(parsed, emergency_detected, emergency_reasons, lang), model_name
     except HTTPException:
         raise
     except Exception as exc:
+        if mode == "ollama_local":
+            logger.warning("Local Ollama symptom check failed (%s); falling back to rules engine.", exc)
+            return generate_rule_based_symptom_guidance(payload, emergency_detected, emergency_reasons, lang)
         _raise_provider_error(exc, "Unable to complete symptom educational analysis from AI provider.")
+
+
+def _normalize_report_payload(parsed: Dict[str, Any], lang: str) -> Dict[str, Any]:
+    normalized_markers = []
+    for marker in parsed.get("lab_markers", []):
+        if not isinstance(marker, dict):
+            continue
+        ref_range = (marker.get("reference_range") or "").strip()
+        status_val = str(marker.get("status", "unknown")).lower()
+        if not ref_range or ref_range.lower() in {"not specified", "not specified in report", "n/a", "none", "unknown"}:
+            ref_range = "Not specified in report"
+            status_val = "unknown"
+        elif status_val not in {"high", "low", "normal", "unknown"}:
+            status_val = "unknown"
+        normalized_markers.append(
+            {
+                "name": str(marker.get("name", "Unnamed Marker")),
+                "value": str(marker.get("value", "")),
+                "unit": str(marker.get("unit", "")),
+                "reference_range": ref_range,
+                "status": status_val,
+                "explanation": str(marker.get("explanation", "")),
+            }
+        )
+    parsed["lab_markers"] = normalized_markers
+    parsed["plain_summary"] = str(parsed.get("plain_summary") or "")
+    terms = parsed.get("medical_terms")
+    parsed["medical_terms"] = (
+        [
+            {
+                "term": str(t.get("term", "")) if isinstance(t, dict) else str(t),
+                "simple_explanation": str(t.get("simple_explanation", "")) if isinstance(t, dict) else "",
+            }
+            for t in terms
+        ]
+        if isinstance(terms, list)
+        else []
+    )
+    for list_key in ("questions_for_doctor", "warnings"):
+        val = parsed.get(list_key)
+        parsed[list_key] = [str(x) for x in val] if isinstance(val, list) else []
+    parsed["disclaimer"] = get_disclaimer("report", lang)
+    return parsed
 
 
 async def generate_report_summary(
@@ -300,8 +399,11 @@ async def generate_report_summary(
     language: str = "en",
 ) -> tuple[Dict[str, Any], str]:
     settings = get_settings()
-    client = _get_client()
     lang = normalize_language(language)
+    client, model_name, mode = await _resolve_ai_target(vision=False)
+
+    if mode == "built_in_offline" or client is None:
+        return generate_rule_based_report_summary(extracted_text, deterministic_markers, lang)
 
     user_prompt = (
         "Here is the extracted text from an uploaded medical report:\n\n"
@@ -312,9 +414,11 @@ async def generate_report_summary(
     )
 
     try:
+        kwargs: Dict[str, Any] = dict(_provider_extra_kwargs(settings, mode))
+        if mode == "cloud_ai":
+            kwargs["response_format"] = {"type": "json_object"}
         response = await client.chat.completions.create(
-            model=settings.effective_chat_model,
-            response_format={"type": "json_object"},
+            model=model_name,
             messages=[
                 {
                     "role": "system",
@@ -330,52 +434,16 @@ async def generate_report_summary(
             ],
             temperature=0.1,
             max_tokens=3000,
-            **_provider_extra_kwargs(settings),
+            **kwargs,
         )
         parsed = _parse_json_response(response.choices[0].message.content or "{}")
-        normalized_markers = []
-        for marker in parsed.get("lab_markers", []):
-            if not isinstance(marker, dict):
-                continue
-            ref_range = (marker.get("reference_range") or "").strip()
-            status_val = str(marker.get("status", "unknown")).lower()
-            if not ref_range or ref_range.lower() in {"not specified", "not specified in report", "n/a", "none", "unknown"}:
-                ref_range = "Not specified in report"
-                status_val = "unknown"
-            elif status_val not in {"high", "low", "normal", "unknown"}:
-                status_val = "unknown"
-            normalized_markers.append(
-                {
-                    "name": str(marker.get("name", "Unnamed Marker")),
-                    "value": str(marker.get("value", "")),
-                    "unit": str(marker.get("unit", "")),
-                    "reference_range": ref_range,
-                    "status": status_val,
-                    "explanation": str(marker.get("explanation", "")),
-                }
-            )
-        parsed["lab_markers"] = normalized_markers
-        parsed["plain_summary"] = str(parsed.get("plain_summary") or "")
-        terms = parsed.get("medical_terms")
-        parsed["medical_terms"] = (
-            [
-                {
-                    "term": str(t.get("term", "")) if isinstance(t, dict) else str(t),
-                    "simple_explanation": str(t.get("simple_explanation", "")) if isinstance(t, dict) else "",
-                }
-                for t in terms
-            ]
-            if isinstance(terms, list)
-            else []
-        )
-        for list_key in ("questions_for_doctor", "warnings"):
-            val = parsed.get(list_key)
-            parsed[list_key] = [str(x) for x in val] if isinstance(val, list) else []
-        parsed["disclaimer"] = get_disclaimer("report", lang)
-        return parsed, settings.effective_chat_model
+        return _normalize_report_payload(parsed, lang), model_name
     except HTTPException:
         raise
     except Exception as exc:
+        if mode == "ollama_local":
+            logger.warning("Local Ollama report summary failed (%s); falling back to deterministic parser.", exc)
+            return generate_rule_based_report_summary(extracted_text, deterministic_markers, lang)
         _raise_provider_error(exc, "AI report summarization failed. Verify your server AI configuration.")
 
 
@@ -386,20 +454,25 @@ async def analyze_medical_image_with_vision(
     language: str = "en",
 ) -> tuple[Dict[str, Any], str]:
     settings = get_settings()
-    client = _get_client()
     lang = normalize_language(language)
+    client, model_name, mode = await _resolve_ai_target(vision=True)
+
+    if mode == "built_in_offline" or client is None:
+        return analyze_image_locally(raw_bytes, mime_type, image_context, lang)
 
     b64 = base64.b64encode(raw_bytes).decode("utf-8")
     data_url = f"data:{mime_type};base64,{b64}"
     context_line = f"User-provided context: {image_context}" if image_context else "No additional user context provided."
 
     try:
+        kwargs: Dict[str, Any] = dict(_provider_extra_kwargs(settings, mode))
+        if mode == "cloud_ai":
+            kwargs["response_format"] = {"type": "json_object"}
         response = await client.chat.completions.create(
-            model=settings.effective_vision_model,
-            response_format={"type": "json_object"},
+            model=model_name,
             temperature=0.2,
             max_tokens=2048,
-            **_provider_extra_kwargs(settings),
+            **kwargs,
             messages=[
                 {
                     "role": "system",
@@ -432,8 +505,11 @@ async def analyze_medical_image_with_vision(
         parsed["limitations"] = str(parsed.get("limitations") or "")
         parsed["recommended_next_steps"] = str(parsed.get("recommended_next_steps") or "")
         parsed["disclaimer"] = get_disclaimer("image", lang)
-        return parsed, settings.effective_vision_model
+        return parsed, model_name
     except HTTPException:
         raise
     except Exception as exc:
+        if mode == "ollama_local":
+            logger.warning("Local Ollama image analysis failed (%s); falling back to local Pillow inspector.", exc)
+            return analyze_image_locally(raw_bytes, mime_type, image_context, lang)
         _raise_provider_error(exc, "Vision AI analysis failed. Verify OPENAI_API_KEY and OPENAI_VISION_MODEL.")

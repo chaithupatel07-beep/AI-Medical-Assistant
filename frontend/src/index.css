@@ -24,10 +24,36 @@
     --radius: 0.75rem;
   }
 
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 96%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 96%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 189 94% 43%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 68%;
+    --accent: 217 33% 20%;
+    --accent-foreground: 213 94% 75%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 33% 20%;
+    --input: 217 33% 22%;
+    --ring: 217 91% 60%;
+  }
+
   body {
     font-family: "Inter", "Noto Sans Telugu", "Noto Sans Devanagari", system-ui, -apple-system, sans-serif;
     background: linear-gradient(180deg, #f8fbff 0%, #f1f7fe 100%);
+    color: hsl(var(--foreground));
     min-height: 100vh;
+  }
+
+  .dark body {
+    background: linear-gradient(180deg, #070d19 0%, #0b1324 100%);
+    color: hsl(var(--foreground));
   }
 
   h1,
@@ -45,6 +71,13 @@
   margin-top: 0.75rem;
   margin-bottom: 0.35rem;
   color: #0f172a;
+}
+
+.dark .markdown-body h1,
+.dark .markdown-body h2,
+.dark .markdown-body h3,
+.dark .markdown-body strong {
+  color: #f1f5f9;
 }
 
 .markdown-body p {

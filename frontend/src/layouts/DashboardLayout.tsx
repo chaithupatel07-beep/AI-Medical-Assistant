@@ -4,17 +4,20 @@ import {
   BookOpen,
   FileText,
   FolderHeart,
+  History,
   Image as ImageIcon,
   LayoutDashboard,
   LogOut,
   Menu,
   MessageSquareHeart,
   Stethoscope,
+  UserCog,
   X,
 } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { BrandLogo } from "@/components/BrandLogo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -34,6 +37,8 @@ export function DashboardLayout() {
     { to: "/dashboard/images", label: t("nav.images"), icon: ImageIcon },
     { to: "/dashboard/library", label: t("nav.library"), icon: BookOpen },
     { to: "/dashboard/records", label: t("nav.records"), icon: FolderHeart },
+    { to: "/dashboard/history", label: t("nav.history"), icon: History },
+    { to: "/dashboard/profile", label: t("nav.profile"), icon: UserCog },
   ];
 
   const handleLogout = async () => {
@@ -44,8 +49,9 @@ export function DashboardLayout() {
   const sidebarContent = (
     <div className="flex h-full flex-col justify-between p-4">
       <div className="space-y-5">
-        <div className="px-1 pt-1">
+        <div className="flex items-center justify-between px-1 pt-1">
           <BrandLogo to="/dashboard" compact />
+          <ThemeToggle />
         </div>
 
         <LanguageSwitcher compact />
@@ -64,7 +70,7 @@ export function DashboardLayout() {
                     "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all",
                     isActive
                       ? "bg-gradient-to-r from-medical-blue to-blue-600 text-white shadow-sm"
-                      : "text-slate-600 hover:bg-blue-50 hover:text-medical-blue"
+                      : "text-slate-600 hover:bg-blue-50 hover:text-medical-blue dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-cyan-400"
                   )
                 }
               >
@@ -76,19 +82,19 @@ export function DashboardLayout() {
         </nav>
       </div>
 
-      <div className="space-y-3 border-t border-slate-100 pt-4">
-        <div className="rounded-xl bg-blue-50/70 p-3 text-xs text-slate-600">
-          <div className="flex items-center gap-1.5 font-semibold text-medical-blue">
+      <div className="space-y-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+        <div className="rounded-xl bg-blue-50/70 p-3 text-xs text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
+          <div className="flex items-center gap-1.5 font-semibold text-medical-blue dark:text-cyan-400">
             <Activity className="h-3.5 w-3.5" />
             <span>{t("sidebar.safetyTitle")}</span>
           </div>
           <p className="mt-1 leading-relaxed">{t("sidebar.safetyText")}</p>
         </div>
 
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900">
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900">{user?.full_name}</p>
-            <p className="truncate text-xs text-slate-500">{user?.email}</p>
+            <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{user?.full_name}</p>
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">{user?.email}</p>
           </div>
           <Button
             variant="ghost"
@@ -97,7 +103,7 @@ export function DashboardLayout() {
             title={t("nav.signOut")}
             aria-label={t("nav.signOut")}
           >
-            <LogOut className="h-4 w-4 text-slate-600" />
+            <LogOut className="h-4 w-4 text-slate-600 dark:text-slate-300" />
           </Button>
         </div>
       </div>
@@ -105,8 +111,8 @@ export function DashboardLayout() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50/70 lg:flex">
-      <aside className="hidden w-72 shrink-0 border-r border-blue-100 bg-white lg:block">
+    <div className="min-h-screen bg-slate-50/70 dark:bg-slate-950 lg:flex">
+      <aside className="hidden w-72 shrink-0 border-r border-blue-100 bg-white dark:border-slate-800 dark:bg-slate-900 lg:block">
         <div className="sticky top-0 h-screen overflow-y-auto">{sidebarContent}</div>
       </aside>
 
@@ -116,10 +122,10 @@ export function DashboardLayout() {
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
           />
-          <aside className="relative z-10 h-full w-72 bg-white shadow-xl">
+          <aside className="relative z-10 h-full w-72 bg-white shadow-xl dark:bg-slate-900">
             <button
               type="button"
-              className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
+              className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
               onClick={() => setSidebarOpen(false)}
               aria-label="Close sidebar"
             >
@@ -131,13 +137,14 @@ export function DashboardLayout() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-blue-100 bg-white/90 px-4 backdrop-blur-md lg:hidden">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-blue-100 bg-white/90 px-4 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/90 lg:hidden">
           <BrandLogo to="/dashboard" compact />
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
+            <ThemeToggle />
             <button
               type="button"
-              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open navigation menu"
             >

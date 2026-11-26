@@ -65,16 +65,41 @@ async def unhandled_exception_handler(_request: Request, exc: Exception):
 
 @app.get("/health", tags=["Health"])
 @app.get("/api/health", tags=["Health"])
-def health_check():
+async def health_check():
+    from app.ai.local_engine import detect_ollama_model
+
     tesseract_ready = bool(settings.tesseract_cmd or shutil.which("tesseract"))
     dist_path = settings.frontend_dist_path
+    ollama_model = None
+    if not settings.is_ai_configured:
+        ollama_model = await detect_ollama_model(settings.ollama_model or None)
+
+    if settings.is_ai_configured:
+        ai_mode = "cloud_ai"
+        ai_provider = settings.effective_provider
+        chat_model = settings.effective_chat_model
+        vision_model = settings.effective_vision_model
+    elif ollama_model:
+        ai_mode = "ollama_local"
+        ai_provider = "ollama"
+        chat_model = ollama_model
+        vision_model = ollama_model
+    else:
+        ai_mode = "built_in_offline"
+        ai_provider = "local-engine"
+        chat_model = "built-in-educational-engine"
+        vision_model = "local-pillow-inspector"
+
     return {
         "status": "ok",
         "app": settings.app_name,
         "ai_configured": settings.is_ai_configured,
-        "ai_provider": settings.effective_provider,
-        "chat_model": settings.effective_chat_model,
-        "vision_model": settings.effective_vision_model,
+        "ai_ready": True,
+        "ai_mode": ai_mode,
+        "ollama_model": ollama_model,
+        "ai_provider": ai_provider,
+        "chat_model": chat_model,
+        "vision_model": vision_model,
         "tesseract_ocr_available": tesseract_ready,
         "frontend_served": dist_path is not None,
         "database_mode": "ephemeral_sqlite" if settings.is_ephemeral_serverless_db else "persistent",

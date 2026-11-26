@@ -22,10 +22,11 @@ router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 
 
 @router.get("/overview")
-def get_dashboard_overview(
+async def get_dashboard_overview(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    from app.ai.local_engine import detect_ollama_model
     settings = get_settings()
 
     total_reports = (
@@ -129,11 +130,41 @@ def get_dashboard_overview(
             }
             for a in recent_activity
         ],
-        "ai_status": {
-            "configured": settings.is_ai_configured,
+        "ai_status": await (lambda: _build_ai_status(settings, detect_ollama_model))(),
+        "database_mode": "ephemeral_sqlite" if settings.is_ephemeral_serverless_db else "persistent",
+    }
+
+
+async def _build_ai_status(settings, detect_ollama_model):
+    ollama_model = None
+    if not settings.is_ai_configured:
+        ollama_model = await detect_ollama_model(settings.ollama_model or None)
+    if settings.is_ai_configured:
+        return {
+            "configured": True,
+            "ready": True,
+            "mode": "cloud_ai",
+            "ollama_model": None,
             "provider": settings.effective_provider,
             "chat_model": settings.effective_chat_model,
             "vision_model": settings.effective_vision_model,
-        },
-        "database_mode": "ephemeral_sqlite" if settings.is_ephemeral_serverless_db else "persistent",
+        }
+    if ollama_model:
+        return {
+            "configured": True,
+            "ready": True,
+            "mode": "ollama_local",
+            "ollama_model": ollama_model,
+            "provider": "ollama",
+            "chat_model": ollama_model,
+            "vision_model": ollama_model,
+        }
+    return {
+        "configured": False,
+        "ready": True,
+        "mode": "built_in_offline",
+        "ollama_model": None,
+        "provider": "local-engine",
+        "chat_model": "built-in-educational-engine",
+        "vision_model": "local-pillow-inspector",
     }

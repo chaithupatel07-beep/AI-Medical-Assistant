@@ -25,10 +25,15 @@ export interface AuthResponse {
   user: User;
 }
 
+export type AiMode = "cloud_ai" | "ollama_local" | "built_in_offline";
+
 export interface HealthStatus {
   status: string;
   app: string;
   ai_configured: boolean;
+  ai_ready?: boolean;
+  ai_mode?: AiMode;
+  ollama_model?: string | null;
   ai_provider: string;
   chat_model: string;
   vision_model: string;
@@ -211,6 +216,9 @@ export interface DashboardOverview {
   }>;
   ai_status: {
     configured: boolean;
+    ready?: boolean;
+    mode?: AiMode;
+    ollama_model?: string | null;
     provider: string;
     chat_model: string;
     vision_model: string;

@@ -24,6 +24,7 @@ export function SymptomCheckerPage() {
   const [relevantContext, setRelevantContext] = useState("");
 
   const [aiConfigured, setAiConfigured] = useState(true);
+  const [aiMode, setAiMode] = useState<"cloud_ai" | "ollama_local" | "built_in_offline" | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SymptomCheckResult | null>(null);
@@ -34,6 +35,7 @@ export function SymptomCheckerPage() {
       .then(([hist, health]) => {
         setHistory(hist);
         setAiConfigured(health.ai_configured);
+        setAiMode(health.ai_mode);
       })
       .catch(() => {});
   };
@@ -105,7 +107,7 @@ export function SymptomCheckerPage() {
         <p className="mt-1 text-sm text-slate-600">{t("sym.sub")}</p>
       </div>
 
-      <AiConfigNotice configured={aiConfigured} />
+      <AiConfigNotice configured={aiConfigured} mode={aiMode} />
 
       <div className="grid gap-6 lg:grid-cols-12">
         <Card className="lg:col-span-5">

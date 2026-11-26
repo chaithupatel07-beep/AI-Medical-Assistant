@@ -21,6 +21,7 @@ export function MedicalImagePage() {
   const [file, setFile] = useState<File | null>(null);
   const [contextText, setContextText] = useState("");
   const [aiConfigured, setAiConfigured] = useState(true);
+  const [aiMode, setAiMode] = useState<"cloud_ai" | "ollama_local" | "built_in_offline" | undefined>(undefined);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [analyzing, setAnalyzing] = useState(false);
@@ -35,6 +36,7 @@ export function MedicalImagePage() {
       .then(([list, health]) => {
         setImages(list);
         setAiConfigured(health.ai_configured);
+        setAiMode(health.ai_mode);
         if (list.length > 0) setSelectedImage(list[0]);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load images."))
@@ -106,7 +108,7 @@ export function MedicalImagePage() {
         <p className="mt-1 text-sm text-slate-600">{t("img.sub")}</p>
       </div>
 
-      <AiConfigNotice configured={aiConfigured} />
+      <AiConfigNotice configured={aiConfigured} mode={aiMode} />
 
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

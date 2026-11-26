@@ -66,42 +66,37 @@ AI-MEDICAL ASSISTANT/
 
 ---
 
-## Setup & Running Locally
+## Setup & Running Locally (Zero API Keys Required!)
 
-### 1. Configure Backend (`backend/`)
+AI Medical Assistant works **out of the box with zero external API keys, paid accounts, or Docker**:
+- **Database**: Local SQLite (`backend/ai_medical_assistant.db`) created automatically on startup.
+- **AI Modes (automatic fallback chain)**:
+  1. **Cloud AI (Optional)** — Used if `OPENAI_API_KEY` or `GEMINI_API_KEY` is configured in `backend/.env`.
+  2. **Local Ollama AI (Optional)** — Auto-detected at `http://127.0.0.1:11434` if you install [Ollama](https://ollama.com) and run e.g. `ollama pull llama3.2`.
+  3. **Built-in Offline Educational Engine (Default)** — Always active with zero setup: medical chatbot knowledge base, rules-based symptom preparation, PyMuPDF + deterministic lab marker parser, and local Pillow medical image inspector.
 
-Create a virtual environment and install Python dependencies:
+### Quick 1-Command Setup & Launch
 
+- **Windows**: Double-click **`run.bat`** (or run `python scripts/setup.py` then `python scripts/start.py`)
+- **macOS / Linux**:
+  ```bash
+  python3 scripts/setup.py
+  python3 scripts/start.py
+  ```
+
+### Manual Setup (Alternative)
+
+1. **Backend (`backend/`)**:
 ```powershell
 cd backend
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
-
-Copy `backend\.env.example` to `backend\.env` and add your server-side AI API key:
-
-```env
-OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_CHAT_MODEL=gpt-4o-mini
-OPENAI_VISION_MODEL=gpt-4o-mini
-JWT_SECRET_KEY=replace-with-a-strong-random-secret-key-at-least-32-chars
-# PostgreSQL / Supabase (optional; SQLite is used by default locally):
-# DATABASE_URL=postgresql+psycopg://postgres:your_password@localhost:5432/ai_medical_assistant
-DATABASE_URL=sqlite:///./ai_medical_assistant.db
-```
-
-Start the FastAPI backend:
-
-```powershell
 uvicorn app.main:app --reload --port 8000
 ```
-
 Interactive Swagger docs: `http://localhost:8000/docs`
 
-### 2. Configure & Run Frontend (`frontend/`)
-
+2. **Frontend (`frontend/`)**:
 ```powershell
 cd frontend
 npm install
@@ -110,7 +105,7 @@ npm run dev
 
 Open `http://localhost:5173` in your browser. Vite proxies `/api/*` requests directly to `http://127.0.0.1:8000`.
 
-### 3. Run Verification Checks
+### Run Verification Checks
 
 ```powershell
 # Backend integration tests

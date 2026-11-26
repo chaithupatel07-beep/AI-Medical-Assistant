@@ -85,9 +85,13 @@ export function DashboardPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge className="border-white/30 bg-white/15 text-white">
-            {data.ai_status.configured
+            {data.ai_status.mode === "cloud_ai"
               ? `${t("dash.aiReady")} (${data.ai_status.chat_model})`
-              : t("dash.aiNeedsKey")}
+              : data.ai_status.mode === "ollama_local"
+                ? `${t("dash.aiLocalReady")} (${data.ai_status.chat_model})`
+                : data.ai_status.configured
+                  ? `${t("dash.aiReady")} (${data.ai_status.chat_model})`
+                  : t("dash.aiOfflineReady")}
           </Badge>
           <Button variant="secondary" asChild>
             <Link to="/dashboard/records">
@@ -97,7 +101,10 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <AiConfigNotice configured={data.ai_status.configured} />
+      <AiConfigNotice
+        configured={data.ai_status.configured}
+        mode={data.ai_status.mode}
+      />
       {data.database_mode === "ephemeral_sqlite" && (
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-semibold">Temporary Serverless Database Active</p>

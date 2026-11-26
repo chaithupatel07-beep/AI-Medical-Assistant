@@ -27,10 +27,21 @@ import type { ActivityItem, ChatSession, MedicalImage, MedicalReport } from "@/t
 import { formatBytes, formatDateTime } from "@/utils/format";
 import { evaluatePassword } from "@/utils/validation";
 
-export function PersonalHealthPage() {
+export type PersonalHealthTab = "reports" | "chats" | "images" | "activity" | "profile";
+
+export function PersonalHealthPage({
+  initialTab = "reports",
+}: {
+  initialTab?: PersonalHealthTab;
+}) {
   const { user, setUserDirect } = useAuth();
   const { language, setLanguage, t } = useLanguage();
+  const [activeTab, setActiveTab] = useState<PersonalHealthTab>(initialTab);
   const [reports, setReports] = useState<MedicalReport[]>([]);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [images, setImages] = useState<MedicalImage[]>([]);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
@@ -243,7 +254,10 @@ export function PersonalHealthPage() {
           <Loader2 className="h-6 w-6 animate-spin text-medical-blue" />
         </div>
       ) : (
-        <Tabs defaultValue="reports">
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as PersonalHealthTab)}
+        >
           <TabsList>
             <TabsTrigger value="reports">{t("rec.tabReports")} ({reports.length})</TabsTrigger>
             <TabsTrigger value="chats">{t("rec.tabChats")} ({chats.length})</TabsTrigger>

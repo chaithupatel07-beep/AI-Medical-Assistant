@@ -26,10 +26,25 @@ class VerifyTokenRequest(BaseModel):
 
 
 @router.get("/health")
-def v1_health():
+async def v1_health():
     from app.main import health_check
 
-    return health_check()
+    return await health_check()
+
+
+@router.post("/auth/register", response_model=auth.AuthResponse, status_code=status.HTTP_201_CREATED)
+def v1_auth_register(payload: auth.RegisterRequest, db: Session = Depends(get_db)):
+    return auth.register(payload=payload, db=db)
+
+
+@router.post("/auth/login", response_model=auth.AuthResponse)
+def v1_auth_login(payload: auth.LoginRequest, db: Session = Depends(get_db)):
+    return auth.login(payload=payload, db=db)
+
+
+@router.post("/auth/logout")
+def v1_auth_logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return auth.logout(current_user=current_user, db=db)
 
 
 @router.get("/auth/me")
@@ -161,8 +176,8 @@ async def v1_analyze_image(
 
 
 @router.get("/dashboard")
-def v1_dashboard(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return dashboard.get_dashboard_overview(current_user=current_user, db=db)
+async def v1_dashboard(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return await dashboard.get_dashboard_overview(current_user=current_user, db=db)
 
 
 @router.get("/health/articles")

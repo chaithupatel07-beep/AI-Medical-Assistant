@@ -19,7 +19,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/hooks/useLanguage";
 import { api } from "@/services/api";
-import type { ChatMessage, ChatSession } from "@/types/api";
+import type { AiMode, ChatMessage, ChatSession } from "@/types/api";
 import { formatDateTime } from "@/utils/format";
 
 export function ChatbotPage() {
@@ -33,6 +33,7 @@ export function ChatbotPage() {
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [aiConfigured, setAiConfigured] = useState(true);
+  const [aiMode, setAiMode] = useState<AiMode | undefined>(undefined);
   const [emergencyBanner, setEmergencyBanner] = useState<string | null>(null);
   const [emergencyReasons, setEmergencyReasons] = useState<string[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
@@ -51,6 +52,7 @@ export function ChatbotPage() {
       .then(([sessionList, health]) => {
         setSessions(sessionList);
         setAiConfigured(health.ai_configured);
+        setAiMode(health.ai_mode);
 
         if (initialSessionId && sessionList.some((s) => s.id === initialSessionId)) {
           setActiveSessionId(initialSessionId);
@@ -197,7 +199,7 @@ export function ChatbotPage() {
         </div>
       </div>
 
-      <AiConfigNotice configured={aiConfigured} />
+      <AiConfigNotice configured={aiConfigured} mode={aiMode} />
 
       {emergencyBanner && (
         <DisclaimerBanner

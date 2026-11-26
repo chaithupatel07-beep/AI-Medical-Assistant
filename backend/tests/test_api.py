@@ -148,18 +148,22 @@ def test_user_isolation_and_profile_activity():
     assert client.delete(f"/api/chat/sessions/{session_id}", headers=bob_h).status_code == 404
 
 
-def test_chat_unconfigured_503_and_mocked_ai_turn():
+def test_chat_offline_engine_and_mocked_ai_turn():
     alice = _register_user("chat@example.com")
     headers = _auth_header(alice["access_token"])
     sess_id = client.post("/api/chat/sessions", headers=headers, json={}).json()["id"]
 
-    # Without OPENAI_API_KEY, returns honest 503 instead of fake AI text
-    unconfigured = client.post(
-        f"/api/chat/sessions/{sess_id}/messages",
-        headers=headers,
-        json={"content": "What does HbA1c mean?"},
-    )
-    assert unconfigured.status_code == 503
+    # Without external API keys or Ollama, built-in offline engine responds with 200
+    with patch("app.services.ai_service.detect_ollama_model", new=AsyncMock(return_value=None)):
+        offline = client.post(
+            f"/api/chat/sessions/{sess_id}/messages",
+            headers=headers,
+            json={"content": "What does HbA1c mean?"},
+        )
+        assert offline.status_code == 200
+        offline_body = offline.json()
+        assert offline_body["ai_model"] == "built-in-educational-engine"
+        assert "HbA1c" in offline_body["assistant_message"]["content"]
 
     # With mocked AI service, message + emergency detection + clear + delete work cleanly
     with patch(
@@ -384,6 +388,80 @@ def test_v1_endpoints_and_pymupdf():
     articles = client.get("/api/v1/health/articles", params={"lang": "te"})
     assert articles.status_code == 200
     assert articles.json()["total"] == 12
+
+
+def test_offline_symptoms_report_image_and_v1_auth():
+    # Register/login/logout via /api/v1/auth/*
+    reg = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "v1_offline@example.com",
+            "password": "Password123!",
+            "full_name": "Offline Tester",
+        },
+    )
+    assert reg.status_code == 201
+    login_res = client.post(
+        "/api/v1/auth/login",
+        json={"email": "v1_offline@example.com", "password": "Password123!"},
+    )
+    assert login_res.status_code == 200
+    token = login_res.json()["access_token"]
+    headers = _auth_header(token)
+
+    with patch("app.ai.local_engine.detect_ollama_model", new=AsyncMock(return_value=None)):
+        health = client.get("/health")
+        assert health.status_code == 200
+        assert health.json()["ai_ready"] is True
+        assert health.json()["ai_mode"] == "built_in_offline"
+
+    with patch("app.services.ai_service.detect_ollama_model", new=AsyncMock(return_value=None)):
+        sym = client.post(
+            "/api/symptoms/check",
+            headers=headers,
+            json={
+                "age": 30,
+                "main_symptom": "fever and headache",
+                "duration": "2 days",
+                "severity": "moderate",
+            },
+        )
+        assert sym.status_code == 200
+        assert sym.json()["ai_model"] == "built-in-rules-engine"
+        assert len(sym.json()["possible_explanations"]) >= 1
+
+        pdf_bytes = _make_minimal_pdf_bytes()
+        rep = client.post(
+            "/api/reports/upload",
+            headers=headers,
+            files={"file": ("offline_cbc.pdf", pdf_bytes, "application/pdf")},
+        )
+        assert rep.status_code == 201
+        rep_id = rep.json()["id"]
+        summary = client.post(f"/api/reports/{rep_id}/summarize", headers=headers)
+        assert summary.status_code == 200
+        assert summary.json()["summary"]["ai_model"] == "local-deterministic-parser"
+
+        # Valid 2x2 PNG bytes via Pillow for local image inspector
+        from io import BytesIO
+        from PIL import Image
+
+        buf = BytesIO()
+        Image.new("RGB", (24, 24), color=(180, 120, 120)).save(buf, format="PNG")
+        img_up = client.post(
+            "/api/images/upload",
+            headers=headers,
+            files={"file": ("skin_sample.png", buf.getvalue(), "image/png")},
+            data={"image_context": "Mild redness on forearm"},
+        )
+        assert img_up.status_code == 201
+        img_id = img_up.json()["id"]
+        analyzed = client.post(f"/api/images/{img_id}/analyze", headers=headers)
+        assert analyzed.status_code == 200
+        assert analyzed.json()["ai_model"] == "local-pillow-inspector"
+
+    out = client.post("/api/v1/auth/logout", headers=headers)
+    assert out.status_code == 200
 
 
 
