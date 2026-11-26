@@ -11,9 +11,10 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.logging_config import setup_logging
+from app.core.rate_limit import RateLimitMiddleware
 from app.core.safety import GENERAL_DISCLAIMER
 from app.database.session import init_db
-from app.routes import auth, chat, dashboard, images, library, reports, symptoms, users
+from app.routes import auth, chat, dashboard, images, library, reports, symptoms, users, v1_compat
 
 logger = setup_logging()
 settings = get_settings()
@@ -50,6 +51,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RateLimitMiddleware, requests_per_minute=settings.rate_limit_per_minute)
 
 
 @app.exception_handler(Exception)
@@ -61,6 +63,7 @@ async def unhandled_exception_handler(_request: Request, exc: Exception):
     )
 
 
+@app.get("/health", tags=["Health"])
 @app.get("/api/health", tags=["Health"])
 def health_check():
     tesseract_ready = bool(settings.tesseract_cmd or shutil.which("tesseract"))
@@ -87,6 +90,20 @@ app.include_router(reports.router)
 app.include_router(images.router)
 app.include_router(library.router)
 app.include_router(dashboard.router)
+app.include_router(v1_compat.router)
+
+
+@app.get("/", include_in_schema=False)
+def root_status():
+    dist = settings.frontend_dist_path
+    if dist is not None:
+        return FileResponse(str(dist / "index.html"))
+    return {
+        "app": settings.app_name,
+        "status": "ok",
+        "docs": "/docs",
+        "health": "/api/health",
+    }
 
 
 _frontend_dist = settings.frontend_dist_path

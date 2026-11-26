@@ -18,10 +18,18 @@ class Settings(BaseSettings):
     app_env: str = "production" if IS_VERCEL else "development"
     port: int = 8000
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    frontend_origin: str = ""
+    rate_limit_per_minute: int = 120
 
     jwt_secret_key: str = "dev-local-secret-change-in-production-9f8e7d6c5b4a3210"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440
+
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_role_key: str = ""
+    supabase_jwt_secret: str = ""
+    supabase_storage_bucket: str = "medical-files"
 
     database_url: str = f"sqlite:///{(DEFAULT_WRITABLE_DIR / 'ai_medical_assistant.db').as_posix()}"
     postgres_url: str = ""
@@ -67,11 +75,20 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> List[str]:
-        return [
+        origins = [
             origin.strip().rstrip("/")
             for origin in self.cors_origins.split(",")
             if origin.strip()
         ]
+        if self.frontend_origin.strip():
+            extra = self.frontend_origin.strip().rstrip("/")
+            if extra not in origins:
+                origins.append(extra)
+        return origins
+
+    @property
+    def is_supabase_storage_configured(self) -> bool:
+        return bool(self.supabase_url.strip() and self.supabase_service_role_key.strip())
 
     @property
     def max_upload_size_bytes(self) -> int:

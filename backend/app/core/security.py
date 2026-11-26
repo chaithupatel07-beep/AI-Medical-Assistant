@@ -64,22 +64,31 @@ def create_access_token(subject: str, extra_claims: Dict[str, Any] | None = None
 
 def decode_access_token(token: str) -> Dict[str, Any]:
     settings = get_settings()
-    try:
-        return jwt.decode(
-            token,
-            settings.jwt_secret_key,
-            algorithms=[settings.jwt_algorithm],
-        )
-    except jwt.ExpiredSignatureError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Your session has expired. Please sign in again.",
-        ) from exc
-    except jwt.PyJWTError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials.",
-        ) from exc
+    secrets_to_try = [settings.jwt_secret_key]
+    if settings.supabase_jwt_secret.strip():
+        secrets_to_try.append(settings.supabase_jwt_secret.strip())
+
+    last_exc: Exception | None = None
+    for secret in secrets_to_try:
+        try:
+            return jwt.decode(
+                token,
+                secret,
+                algorithms=[settings.jwt_algorithm],
+                options={"verify_aud": False},
+            )
+        except jwt.ExpiredSignatureError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Your session has expired. Please sign in again.",
+            ) from exc
+        except jwt.PyJWTError as exc:
+            last_exc = exc
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication credentials.",
+    ) from last_exc
 
 
 def generate_reset_token() -> Tuple[str, str]:

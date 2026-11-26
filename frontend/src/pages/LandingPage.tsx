@@ -163,6 +163,25 @@ export function LandingPage() {
           </div>
         </Card>
       </section>
+
+      <section id="faq" className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl text-center">
+          <Badge variant="cyan">{t("landing.faqBadge")}</Badge>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
+            {t("landing.faqTitle")}
+          </h2>
+        </div>
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          {[1, 2, 3, 4].map((idx) => (
+            <Card key={idx} className="p-5">
+              <h3 className="text-base font-bold text-slate-900">{t(`landing.faq${idx}.q`)}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                {t(`landing.faq${idx}.a`)}
+              </p>
+            </Card>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

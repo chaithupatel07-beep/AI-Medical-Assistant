@@ -1,4 +1,4 @@
-"""PDF text extraction and image OCR service (pypdf + optional Tesseract / Vision OCR)."""
+"""PDF text extraction (PyMuPDF primary + pypdf fallback) and image/scanned-PDF OCR."""
 
 import base64
 from io import BytesIO
@@ -6,6 +6,7 @@ import logging
 import shutil
 from typing import Tuple
 
+import pymupdf as fitz
 from openai import AsyncOpenAI
 from PIL import Image
 from pypdf import PdfReader
@@ -16,7 +17,17 @@ from app.core.config import get_settings
 logger = logging.getLogger("ai_medical_assistant.ocr")
 
 
-def _extract_pdf_text(raw_bytes: bytes) -> str:
+def _extract_pdf_text_pymupdf(raw_bytes: bytes) -> str:
+    chunks = []
+    with fitz.open(stream=raw_bytes, filetype="pdf") as doc:
+        for page in doc:
+            text = (page.get_text("text") or "").strip()
+            if text:
+                chunks.append(text)
+    return "\n\n".join(chunks).strip()
+
+
+def _extract_pdf_text_pypdf(raw_bytes: bytes) -> str:
     reader = PdfReader(BytesIO(raw_bytes))
     chunks = []
     for page in reader.pages:
@@ -24,6 +35,18 @@ def _extract_pdf_text(raw_bytes: bytes) -> str:
         if text.strip():
             chunks.append(text.strip())
     return "\n\n".join(chunks).strip()
+
+
+def _render_first_pdf_page_png(raw_bytes: bytes) -> bytes | None:
+    try:
+        with fitz.open(stream=raw_bytes, filetype="pdf") as doc:
+            if len(doc) == 0:
+                return None
+            pix = doc[0].get_pixmap(dpi=160)
+            return pix.tobytes("png")
+    except Exception as exc:
+        logger.warning("PyMuPDF page render failed: %s", exc)
+        return None
 
 
 def _extract_image_text_tesseract(raw_bytes: bytes) -> str:
@@ -82,26 +105,48 @@ async def _extract_image_text_vision_ai(raw_bytes: bytes, mime_type: str) -> str
         return ""
 
 
+async def _ocr_image_bytes(raw_bytes: bytes, mime_type: str) -> Tuple[str, str]:
+    try:
+        tesseract_text = _extract_image_text_tesseract(raw_bytes)
+        if tesseract_text:
+            return tesseract_text, "tesseract_ocr"
+    except Exception as exc:
+        logger.warning("Tesseract OCR failed: %s", exc)
+
+    vision_text = await _extract_image_text_vision_ai(raw_bytes, mime_type)
+    if vision_text:
+        return vision_text, "vision_ai_ocr"
+
+    return "", "ocr_unavailable"
+
+
 async def extract_report_text(raw_bytes: bytes, mime_type: str) -> Tuple[str, str]:
-    """Extract text from PDF or image reports. Returns (extracted_text, extraction_method)."""
+    """Extract text from PDF (PyMuPDF + OCR fallback) or image reports."""
     if mime_type == "application/pdf":
-        text = _extract_pdf_text(raw_bytes)
-        if text:
-            return text, "pypdf"
+        try:
+            text = _extract_pdf_text_pymupdf(raw_bytes)
+            if text:
+                return text, "pymupdf"
+        except Exception as exc:
+            logger.warning("PyMuPDF extraction failed, trying pypdf: %s", exc)
+
+        try:
+            fallback_text = _extract_pdf_text_pypdf(raw_bytes)
+            if fallback_text:
+                return fallback_text, "pypdf"
+        except Exception as exc:
+            logger.warning("pypdf extraction failed: %s", exc)
+
+        # Scanned PDF fallback: render page 1 via PyMuPDF and run OCR
+        rendered_png = _render_first_pdf_page_png(raw_bytes)
+        if rendered_png:
+            ocr_text, ocr_method = await _ocr_image_bytes(rendered_png, "image/png")
+            if ocr_text:
+                return ocr_text, f"pymupdf_{ocr_method}"
+
         return "", "pdf_no_embedded_text"
 
     if mime_type in {"image/jpeg", "image/png"}:
-        try:
-            tesseract_text = _extract_image_text_tesseract(raw_bytes)
-            if tesseract_text:
-                return tesseract_text, "tesseract_ocr"
-        except Exception as exc:
-            logger.warning("Tesseract OCR failed: %s", exc)
-
-        vision_text = await _extract_image_text_vision_ai(raw_bytes, mime_type)
-        if vision_text:
-            return vision_text, "vision_ai_ocr"
-
-        return "", "ocr_unavailable"
+        return await _ocr_image_bytes(raw_bytes, mime_type)
 
     return "", "unsupported"

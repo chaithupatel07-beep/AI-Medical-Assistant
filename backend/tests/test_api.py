@@ -349,4 +349,42 @@ def test_gemini_api_key_autodetection_and_sanitization():
         settings.openai_vision_model = orig_vis
 
 
+def test_v1_endpoints_and_pymupdf():
+    assert client.get("/health").status_code == 200
+    v1_health = client.get("/api/v1/health")
+    assert v1_health.status_code == 200
+    assert v1_health.json()["status"] == "ok"
+
+    user = _register_user("v1_user@example.com", "V1 Tester")
+    token = user["access_token"]
+    headers = _auth_header(token)
+
+    verify = client.post("/api/v1/auth/verify", json={"token": token})
+    assert verify.status_code == 200
+    assert verify.json()["valid"] is True
+
+    me = client.get("/api/v1/auth/me", headers=headers)
+    assert me.status_code == 200
+    assert me.json()["email"] == "v1_user@example.com"
+
+    dash = client.get("/api/v1/dashboard", headers=headers)
+    assert dash.status_code == 200
+    assert dash.json()["stats"]["total_reports"] == 0
+
+    pdf_bytes = _make_minimal_pdf_bytes()
+    upload = client.post(
+        "/api/v1/reports/upload",
+        headers=headers,
+        files={"file": ("pymupdf_test.pdf", pdf_bytes, "application/pdf")},
+    )
+    assert upload.status_code == 201
+    assert upload.json()["extraction_method"] == "pymupdf"
+    assert "Hemoglobin" in (upload.json()["extracted_text"] or "")
+
+    articles = client.get("/api/v1/health/articles", params={"lang": "te"})
+    assert articles.status_code == 200
+    assert articles.json()["total"] == 12
+
+
+
 

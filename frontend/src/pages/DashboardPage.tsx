@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
   ArrowRight,
@@ -19,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/hooks/useLanguage";
 import { api } from "@/services/api";
-import type { DashboardOverview } from "@/types/api";
 import { formatDateTime } from "@/utils/format";
 
 const CATEGORY_TRANSLATIONS: Record<string, Record<string, string>> = {
@@ -33,17 +32,11 @@ const CATEGORY_TRANSLATIONS: Record<string, Record<string, string>> = {
 
 export function DashboardPage() {
   const { language, t } = useLanguage();
-  const [data, setData] = useState<DashboardOverview | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api
-      .getDashboardOverview()
-      .then(setData)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load dashboard."))
-      .finally(() => setLoading(false));
-  }, []);
+  const { data, isLoading: loading, error: queryError } = useQuery({
+    queryKey: ["dashboard-overview"],
+    queryFn: api.getDashboardOverview,
+  });
+  const error = queryError instanceof Error ? queryError.message : null;
 
   if (loading) {
     return (

@@ -1,6 +1,9 @@
-import { FormEvent, useState } from "react";
+import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Loader2, UserPlus, X } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
+import { z } from "zod";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,51 +11,52 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
-import { evaluatePassword, isValidEmail } from "@/utils/validation";
+import { evaluatePassword } from "@/utils/validation";
+
+const registerSchema = z
+  .object({
+    fullName: z.string().trim().min(2, "Full name must be at least 2 characters."),
+    email: z.string().trim().email("Please enter a valid email address."),
+    password: z
+      .string()
+      .refine((val) => evaluatePassword(val).valid, {
+        message: "Password does not meet complexity requirements.",
+      }),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Passwords do not match.",
+  });
+
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export function RegisterPage() {
-  const { register } = useAuth();
+  const { register: registerAccount } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const [serverError, setServerError] = useState<string | null>(null);
 
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const {
+    register,
+    watch,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "" },
+  });
 
-  const pwEval = evaluatePassword(password);
+  const passwordVal = watch("password") || "";
+  const pwEval = evaluatePassword(passwordVal);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (fullName.trim().length < 2) {
-      setError("Full name must be at least 2 characters.");
-      return;
-    }
-    if (!isValidEmail(email)) {
-      setError("Please enter a valid email address.");
-      return;
-    }
-    if (!pwEval.valid) {
-      setError(pwEval.message);
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-
-    setSubmitting(true);
+  const onSubmit = async (values: RegisterFormValues) => {
+    setServerError(null);
     try {
-      await register(fullName.trim(), email.trim(), password);
+      await registerAccount(values.fullName.trim(), values.email.trim(), values.password);
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed.");
-    } finally {
-      setSubmitting(false);
+      setServerError(err instanceof Error ? err.message : "Registration failed.");
     }
   };
 
@@ -72,21 +76,19 @@ export function RegisterPage() {
           <CardDescription>{t("auth.createSub")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+            {serverError && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
-                {error}
+                {serverError}
               </div>
             )}
 
             <div className="space-y-1.5">
               <Label htmlFor="reg-name">{t("auth.fullName")}</Label>
-              <Input
-                id="reg-name"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-              />
+              <Input id="reg-name" {...register("fullName")} />
+              {errors.fullName && (
+                <p className="text-xs text-red-600">{errors.fullName.message}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -96,10 +98,9 @@ export function RegisterPage() {
                 type="email"
                 autoComplete="email"
                 placeholder="alex@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                {...register("email")}
               />
+              {errors.email && <p className="text-xs text-red-600">{errors.email.message}</p>}
             </div>
 
             <div className="space-y-1.5">
@@ -108,11 +109,9 @@ export function RegisterPage() {
                 id="reg-password"
                 type="password"
                 autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+                {...register("password")}
               />
-              {password.length > 0 && (
+              {passwordVal.length > 0 && (
                 <div className="mt-2 grid grid-cols-2 gap-1.5 rounded-lg bg-slate-50 p-2.5 text-xs">
                   {ruleItems.map((item) => (
                     <div
@@ -127,6 +126,9 @@ export function RegisterPage() {
                   ))}
                 </div>
               )}
+              {errors.password && (
+                <p className="text-xs text-red-600">{errors.password.message}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -135,14 +137,15 @@ export function RegisterPage() {
                 id="reg-confirm"
                 type="password"
                 autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
+                {...register("confirmPassword")}
               />
+              {errors.confirmPassword && (
+                <p className="text-xs text-red-600">{errors.confirmPassword.message}</p>
+              )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? (
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" /> {t("auth.creating")}
                 </>

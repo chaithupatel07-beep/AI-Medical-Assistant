@@ -1,8 +1,17 @@
 # AI Medical Assistant — Your Intelligent Healthcare Companion
 
-A complete full-stack, educational AI-powered healthcare support web application built with **React + TypeScript + Vite + Tailwind CSS + Shadcn UI** on the frontend and **Python FastAPI + SQLAlchemy + PostgreSQL/Supabase (with zero-setup SQLite local fallback)** on the backend.
+A complete full-stack, educational AI-powered healthcare support web application built with **React + TypeScript + Vite + Tailwind CSS + Shadcn UI + TanStack Query + React Hook Form + Zod** on the frontend and **Python FastAPI + SQLAlchemy + PyMuPDF + Tesseract OCR + PostgreSQL/Supabase (with SQLite local fallback)** on the backend. Supports **English, Telugu (`తెలుగు`), and Hindi (`हिन्दी`)** across the UI, Health Library, and AI responses.
 
 > **Important Medical Safety Disclaimer:** AI Medical Assistant is strictly an educational healthcare support platform. It does **not** diagnose conditions, prescribe medications, or replace care from a licensed healthcare professional. In an emergency, call your local emergency services immediately.
+
+---
+
+## Problem Statement & Objectives
+
+Medical reports, lab abbreviations, and clinical terminology are often difficult for patients and students to interpret before a doctor visit. This platform aims to:
+1. Translate lab reports and medical terms into clear, non-diagnostic plain language in English, Telugu, or Hindi.
+2. Provide structured educational symptom preparation without making diagnoses or prescriptions.
+3. Preserve strict user privacy, report-supplied reference ranges, and emergency warning detection.
 
 ---
 
@@ -151,3 +160,19 @@ When importing this repository on **Vercel**:
 1. **Database**: Run `database/schema.sql` in Supabase/PostgreSQL and copy the connection string into `DATABASE_URL`.
 2. **Backend**: Deploy `backend/` to Render/Railway with `DATABASE_URL`, `JWT_SECRET_KEY`, `OPENAI_API_KEY`, and `CORS_ORIGINS=https://your-frontend.vercel.app`.
 3. **Frontend (`frontend/`)**: Deploy to Vercel (using `frontend/vercel.json` for SPA routing) with `VITE_API_BASE_URL=https://your-backend-url.onrender.com`.
+
+---
+
+## Documentation
+
+- [Architecture](documentation/architecture.md)
+- [Setup Guide](documentation/setup-guide.md)
+- [API Documentation](documentation/api-documentation.md)
+- [Deployment Guide](documentation/deployment-guide.md)
+- [Testing Report](documentation/testing-report.md)
+- [Deployment Checklist](DEPLOYMENT_CHECKLIST.md)
+
+## Known Limitations & Future Enhancements
+
+- **Limitations**: Educational support only; not a certified medical device or clinical diagnostic tool. Scanned PDFs/images require either local Tesseract OCR or a configured Vision AI key. Ephemeral `/tmp` SQLite on serverless platforms resets unless PostgreSQL (`DATABASE_URL` / `POSTGRES_URL`) is connected.
+- **Future Enhancements**: Multi-page scanned PDF OCR batching, clinician-shareable temporary report links, and longitudinal lab marker trend charts.
