@@ -1,0 +1,114 @@
+# AI Medical Assistant — Your Intelligent Healthcare Companion
+
+A complete full-stack, educational AI-powered healthcare support web application built with **React + TypeScript + Vite + Tailwind CSS + Shadcn UI** on the frontend and **Python FastAPI + SQLAlchemy + PostgreSQL/Supabase (with zero-setup SQLite local fallback)** on the backend.
+
+> **Important Medical Safety Disclaimer:** AI Medical Assistant is strictly an educational healthcare support platform. It does **not** diagnose conditions, prescribe medications, or replace care from a licensed healthcare professional. In an emergency, call your local emergency services immediately.
+
+---
+
+## Core Features
+
+1. **Public Landing Page & Medical Safety Center** — Hero overview, feature cards, workflow walkthrough, benefits, and safety disclaimers.
+2. **Secure Authentication & User Isolation** — Registration with password complexity rules, JWT Bearer authentication, login, logout, forgot/reset password flow, profile management, and strict user-level ownership on every record and file endpoint.
+3. **Personalized Main Dashboard** — Live database statistics (uploaded reports, AI summaries, conversations, symptom checks, medical images), recent reports, recent conversations, health library shortcuts, and AI configuration status.
+4. **AI Medical Chatbot** — Real-time Markdown responses, persistent conversation history, new/clear/delete session controls, suggested questions, and automatic emergency warning detection.
+5. **Symptom Information Checker** — Structured form (age, optional gender, main symptom, duration, severity, additional symptoms, relevant context) returning educational possibilities, next steps, warning signs, and questions for your doctor.
+6. **Medical Report Summarizer (PDF, JPG, JPEG, PNG)** — Drag-and-drop upload with magic-byte validation, progress indicator, authenticated Blob file preview, `pypdf` text extraction, `pytesseract` / Vision OCR fallback, deterministic lab marker parsing without inventing reference ranges, AI plain-language summary, and Markdown summary download.
+7. **Medical Image Analysis** — Secure JPG/PNG upload, authenticated preview, Vision AI observations, explicit limitations & uncertainty notice, and recommendation for professional medical review.
+8. **Health Information Library** — Searchable across all 6 categories (*General Health*, *Nutrition*, *Fitness and Exercise*, *Preventive Healthcare*, *Common Health Conditions*, *Mental Wellness*) with links to **MedlinePlus**, **WHO**, and **CDC**.
+9. **Personal Health Dashboard** — Manage reports, AI summaries, chat history, uploaded images, activity history, personal health profile, and password security with full delete controls.
+
+---
+
+## Project Structure
+
+```text
+AI-MEDICAL ASSISTANT/
+├── frontend/
+│   ├── src/
+│   │   ├── assets/             # Custom SVG illustrations
+│   │   ├── components/         # Reusable & Shadcn UI components
+│   │   ├── hooks/              # Auth context & authenticated Blob preview hook
+│   │   ├── layouts/            # PublicLayout & DashboardLayout
+│   │   ├── pages/              # Landing, Auth, Dashboard, Chat, Symptoms, Reports, Images, Library, Personal Health
+│   │   ├── services/           # Typed REST API client & XHR upload progress helper
+│   │   ├── types/              # TypeScript API interfaces
+│   │   └── utils/              # Class merging, formatting, password/email validation
+│   ├── package.json
+│   └── vite.config.ts
+├── backend/
+│   ├── app/
+│   │   ├── core/               # Settings, JWT/bcrypt security, safety guardrails, logging
+│   │   ├── database/           # SQLAlchemy engine & session setup
+│   │   ├── models/             # 8 relational ORM models
+│   │   ├── routes/             # Auth, Users, Chat, Symptoms, Reports, Images, Library, Dashboard
+│   │   ├── schemas/            # Pydantic v2 schemas
+│   │   ├── services/           # Server-side AI service, OCR service, report parser, library catalog
+│   │   └── utils/              # Secure file validation & user activity logging
+│   ├── tests/                  # Pytest API integration tests
+│   ├── .env.example
+│   └── requirements.txt
+├── database/
+│   └── schema.sql              # PostgreSQL / Supabase DDL schema (8 tables)
+├── docs/
+│   └── API.md                  # REST API documentation
+└── .env.example
+```
+
+---
+
+## Setup & Running Locally
+
+### 1. Configure Backend (`backend/`)
+
+Create a virtual environment and install Python dependencies:
+
+```powershell
+cd backend
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+Copy `backend\.env.example` to `backend\.env` and add your server-side AI API key:
+
+```env
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_CHAT_MODEL=gpt-4o-mini
+OPENAI_VISION_MODEL=gpt-4o-mini
+JWT_SECRET_KEY=replace-with-a-strong-random-secret-key-at-least-32-chars
+# PostgreSQL / Supabase (optional; SQLite is used by default locally):
+# DATABASE_URL=postgresql+psycopg://postgres:your_password@localhost:5432/ai_medical_assistant
+DATABASE_URL=sqlite:///./ai_medical_assistant.db
+```
+
+Start the FastAPI backend:
+
+```powershell
+uvicorn app.main:app --reload --port 8000
+```
+
+Interactive Swagger docs: `http://localhost:8000/docs`
+
+### 2. Configure & Run Frontend (`frontend/`)
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173` in your browser. Vite proxies `/api/*` requests directly to `http://127.0.0.1:8000`.
+
+### 3. Run Verification Checks
+
+```powershell
+# Backend integration tests
+cd backend
+.venv\Scripts\pytest.exe -v
+
+# Frontend TypeScript check & production build
+cd frontend
+npm run build
+```
