@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, LargeBinary, String, Text
 from sqlalchemy.orm import relationship
 
 from app.database.session import Base
@@ -84,6 +84,7 @@ class MedicalReport(Base):
     file_size_bytes = Column(Integer, nullable=False)
     extraction_method = Column(String(50), nullable=False)
     extracted_text = Column(Text, nullable=True)
+    file_data = Column(LargeBinary, nullable=True)
     status = Column(String(32), default="uploaded", nullable=False)
     created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
@@ -159,6 +160,7 @@ class UploadedImage(Base):
     storage_path = Column(String(500), nullable=False)
     mime_type = Column(String(100), nullable=False)
     file_size_bytes = Column(Integer, nullable=False)
+    file_data = Column(LargeBinary, nullable=True)
     image_context = Column(Text, nullable=True)
     analysis_summary = Column(Text, nullable=True)
     observations_json = Column(Text, default="[]", nullable=False)

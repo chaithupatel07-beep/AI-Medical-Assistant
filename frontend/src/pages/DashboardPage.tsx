@@ -105,6 +105,16 @@ export function DashboardPage() {
       </div>
 
       <AiConfigNotice configured={data.ai_status.configured} />
+      {data.database_mode === "ephemeral_sqlite" && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-semibold">Temporary Serverless Database Active</p>
+          <p className="mt-0.5 text-amber-800">
+            Connect a PostgreSQL database (Neon Postgres in Vercel Storage or Supabase{" "}
+            <code>DATABASE_URL</code>) and redeploy so user logins, reports, and chats persist
+            across serverless restarts.
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {statCards.map((item) => {

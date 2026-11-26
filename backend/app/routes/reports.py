@@ -89,6 +89,7 @@ async def upload_medical_report(
         file_size_bytes=size_bytes,
         extraction_method=extraction_method,
         extracted_text=extracted_text or None,
+        file_data=raw_bytes,
         status=report_status,
     )
     db.add(report)
@@ -214,13 +215,19 @@ def download_original_report(
 ):
     report = _get_owned_report(db, report_id, current_user.id)
     path = Path(report.storage_path)
-    if not path.is_file():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stored file not found.")
-    return FileResponse(
-        path=str(path),
-        media_type=report.mime_type,
-        filename=report.original_filename,
-    )
+    if path.is_file():
+        return FileResponse(
+            path=str(path),
+            media_type=report.mime_type,
+            filename=report.original_filename,
+        )
+    if report.file_data:
+        return Response(
+            content=report.file_data,
+            media_type=report.mime_type,
+            headers={"Content-Disposition": f'inline; filename="{report.original_filename}"'},
+        )
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stored file not found.")
 
 
 @router.get("/{report_id}/summary/download")

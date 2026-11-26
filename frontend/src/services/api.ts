@@ -79,6 +79,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new ApiError(detail, res.status);
   }
 
+  const contentType = res.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    throw new ApiError(
+      "Received unexpected non-JSON response from server. Verify backend deployment is active.",
+      res.status
+    );
+  }
   return (await res.json()) as T;
 }
 

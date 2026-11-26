@@ -103,6 +103,15 @@ export function ReportSummarizerPage() {
     }
   };
 
+  const handleDownload = async (path: string, filename: string) => {
+    setError(null);
+    try {
+      await downloadProtectedFile(path, filename);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to download file.");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -229,7 +238,7 @@ export function ReportSummarizerPage() {
                       variant="outline"
                       size="sm"
                       onClick={() =>
-                        void downloadProtectedFile(
+                        void handleDownload(
                           `/api/reports/${selectedReport.id}/file`,
                           selectedReport.original_filename
                         )
@@ -242,7 +251,7 @@ export function ReportSummarizerPage() {
                         variant="outline"
                         size="sm"
                         onClick={() =>
-                          void downloadProtectedFile(
+                          void handleDownload(
                             `/api/reports/${selectedReport.id}/summary/download`,
                             `${selectedReport.original_filename}_summary.md`
                           )

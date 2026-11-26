@@ -54,3 +54,10 @@ def init_db() -> None:
                         "ALTER TABLE user_profiles ADD COLUMN preferred_language VARCHAR(8) NOT NULL DEFAULT 'en'"
                     )
                 )
+    binary_type = "BLOB" if db_url.startswith("sqlite") else "BYTEA"
+    for tbl in ("medical_reports", "uploaded_images"):
+        if inspector.has_table(tbl):
+            cols = {col["name"] for col in inspector.get_columns(tbl)}
+            if "file_data" not in cols:
+                with engine.begin() as conn:
+                    conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN file_data {binary_type}"))

@@ -87,6 +87,21 @@ export function PersonalHealthPage() {
     setPreferredLang(language);
   }, [language]);
 
+  useEffect(() => {
+    if (!user) return;
+    setFullName(user.full_name || "");
+    setAge(user.profile?.age ? String(user.profile.age) : "");
+    setGender(user.profile?.gender || "");
+    setBloodType(user.profile?.blood_type || "");
+    setAllergies(user.profile?.allergies || "");
+    setChronicConditions(user.profile?.chronic_conditions || "");
+    setEmergencyContact(user.profile?.emergency_contact || "");
+    setPreferredUnits(user.profile?.preferred_units || "metric");
+    if (user.profile?.preferred_language) {
+      setPreferredLang(user.profile.preferred_language);
+    }
+  }, [user]);
+
   const handleSaveProfile = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -141,32 +156,66 @@ export function PersonalHealthPage() {
   };
 
   const deleteReport = async (id: string) => {
-    await api.deleteReport(id);
-    setReports((prev) => prev.filter((r) => r.id !== id));
-    setFeedback("Medical report deleted.");
+    setError(null);
+    try {
+      await api.deleteReport(id);
+      setReports((prev) => prev.filter((r) => r.id !== id));
+      setFeedback("Medical report deleted.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete report.");
+    }
   };
 
   const deleteChat = async (id: string) => {
-    await api.deleteChatSession(id);
-    setChats((prev) => prev.filter((c) => c.id !== id));
-    setFeedback("Conversation deleted.");
+    setError(null);
+    try {
+      await api.deleteChatSession(id);
+      setChats((prev) => prev.filter((c) => c.id !== id));
+      setFeedback("Conversation deleted.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete conversation.");
+    }
   };
 
   const deleteImage = async (id: string) => {
-    await api.deleteImage(id);
-    setImages((prev) => prev.filter((img) => img.id !== id));
-    setFeedback("Medical image deleted.");
+    setError(null);
+    try {
+      await api.deleteImage(id);
+      setImages((prev) => prev.filter((img) => img.id !== id));
+      setFeedback("Medical image deleted.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete image.");
+    }
   };
 
   const deleteActivity = async (id: string) => {
-    await api.deleteActivity(id);
-    setActivities((prev) => prev.filter((a) => a.id !== id));
+    setError(null);
+    try {
+      await api.deleteActivity(id);
+      setActivities((prev) => prev.filter((a) => a.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete activity entry.");
+    }
   };
 
   const clearActivity = async () => {
-    await api.clearActivity();
-    setActivities([]);
-    setFeedback("Activity history cleared.");
+    setError(null);
+    try {
+      await api.clearActivity();
+      setActivities([]);
+      setFeedback("Activity history cleared.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to clear activity history.");
+    }
+  };
+
+  const handleDownload = async (path: string, filename: string) => {
+    setError(null);
+    try {
+      await downloadProtectedFile(path, filename);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to download file.");
+    }
   };
 
   return (
@@ -238,7 +287,7 @@ export function PersonalHealthPage() {
                           size="sm"
                           variant="outline"
                           onClick={() =>
-                            void downloadProtectedFile(
+                            void handleDownload(
                               `/api/reports/${report.id}/file`,
                               report.original_filename
                             )
@@ -251,7 +300,7 @@ export function PersonalHealthPage() {
                             size="sm"
                             variant="outline"
                             onClick={() =>
-                              void downloadProtectedFile(
+                              void handleDownload(
                                 `/api/reports/${report.id}/summary/download`,
                                 `${report.original_filename}_summary.md`
                               )

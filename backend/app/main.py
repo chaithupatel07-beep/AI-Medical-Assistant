@@ -74,6 +74,7 @@ def health_check():
         "vision_model": settings.effective_vision_model,
         "tesseract_ocr_available": tesseract_ready,
         "frontend_served": dist_path is not None,
+        "database_mode": "ephemeral_sqlite" if settings.is_ephemeral_serverless_db else "persistent",
         "disclaimer": GENERAL_DISCLAIMER,
     }
 

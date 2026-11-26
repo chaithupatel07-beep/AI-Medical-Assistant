@@ -135,4 +135,5 @@ def get_dashboard_overview(
             "chat_model": settings.effective_chat_model,
             "vision_model": settings.effective_vision_model,
         },
+        "database_mode": "ephemeral_sqlite" if settings.is_ephemeral_serverless_db else "persistent",
     }

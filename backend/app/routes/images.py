@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -56,7 +56,7 @@ async def upload_medical_image(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    original_name, stored_name, storage_path, mime_type, size_bytes, _raw = (
+    original_name, stored_name, storage_path, mime_type, size_bytes, raw_bytes = (
         await validate_and_store_upload(file, current_user.id, kind="images")
     )
 
@@ -67,6 +67,7 @@ async def upload_medical_image(
         storage_path=storage_path,
         mime_type=mime_type,
         file_size_bytes=size_bytes,
+        file_data=raw_bytes,
         image_context=(image_context or "").strip()[:1000] or None,
         status="uploaded",
     )
@@ -96,10 +97,12 @@ async def analyze_medical_image(
     record = _get_owned_image(db, image_id, current_user.id)
     language = normalize_language(lang)
     path = Path(record.storage_path)
-    if not path.is_file():
+    if path.is_file():
+        raw_bytes = path.read_bytes()
+    elif record.file_data:
+        raw_bytes = bytes(record.file_data)
+    else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stored image file missing.")
-
-    raw_bytes = path.read_bytes()
     analysis, model_used = await analyze_medical_image_with_vision(
         raw_bytes=raw_bytes,
         mime_type=record.mime_type,
@@ -160,13 +163,19 @@ def view_medical_image(
 ):
     record = _get_owned_image(db, image_id, current_user.id)
     path = Path(record.storage_path)
-    if not path.is_file():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stored image not found.")
-    return FileResponse(
-        path=str(path),
-        media_type=record.mime_type,
-        filename=record.original_filename,
-    )
+    if path.is_file():
+        return FileResponse(
+            path=str(path),
+            media_type=record.mime_type,
+            filename=record.original_filename,
+        )
+    if record.file_data:
+        return Response(
+            content=record.file_data,
+            media_type=record.mime_type,
+            headers={"Content-Disposition": f'inline; filename="{record.original_filename}"'},
+        )
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stored image not found.")
 
 
 @router.delete("/{image_id}")

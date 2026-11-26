@@ -181,7 +181,7 @@ def test_chat_unconfigured_503_and_mocked_ai_turn():
     assert cleared.json()["messages"] == []
 
 
-def test_report_upload_validation_markers_and_isolation():
+def test_report_upload_validation_markers_and_isolation(tmp_path):
     alice = _register_user("rep_alice@example.com")
     bob = _register_user("rep_bob@example.com")
     alice_h = _auth_header(alice["access_token"])
@@ -215,6 +215,14 @@ def test_report_upload_validation_markers_and_isolation():
 
     # Bob cannot access Alice's report file
     assert client.get(f"/api/reports/{report_id}/file", headers=bob_h).status_code == 404
+
+    # Even if ephemeral local disk file disappears, DB file_data fallback serves the original file
+    for f in (tmp_path / "uploads" / "reports").rglob("*"):
+        if f.is_file():
+            f.unlink()
+    dl_orig = client.get(f"/api/reports/{report_id}/file", headers=alice_h)
+    assert dl_orig.status_code == 200
+    assert dl_orig.content.startswith(b"%PDF-")
 
     # Mock AI summary + Markdown download + Dashboard count
     mock_summary = {

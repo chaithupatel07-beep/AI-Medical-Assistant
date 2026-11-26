@@ -33,6 +33,7 @@ export interface HealthStatus {
   chat_model: string;
   vision_model: string;
   tesseract_ocr_available: boolean;
+  database_mode?: "persistent" | "ephemeral_sqlite";
   disclaimer: string;
 }
 
@@ -214,4 +215,5 @@ export interface DashboardOverview {
     chat_model: string;
     vision_model: string;
   };
+  database_mode?: "persistent" | "ephemeral_sqlite";
 }

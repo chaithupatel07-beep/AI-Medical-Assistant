@@ -25,6 +25,8 @@ class Settings(BaseSettings):
 
     database_url: str = f"sqlite:///{(DEFAULT_WRITABLE_DIR / 'ai_medical_assistant.db').as_posix()}"
     postgres_url: str = ""
+    postgres_prisma_url: str = ""
+    neon_database_url: str = ""
 
     ai_provider: str = "openai"
     openai_api_key: str = ""
@@ -47,13 +49,21 @@ class Settings(BaseSettings):
     @property
     def normalized_database_url(self) -> str:
         raw_db = (self.database_url or "").strip()
-        raw_pg = (self.postgres_url or "").strip()
-        url = raw_pg if (raw_pg and (not raw_db or raw_db.startswith("sqlite"))) else raw_db
+        fallback_pg = (
+            (self.postgres_url or "").strip()
+            or (self.neon_database_url or "").strip()
+            or (self.postgres_prisma_url or "").strip()
+        )
+        url = fallback_pg if (fallback_pg and (not raw_db or raw_db.startswith("sqlite"))) else raw_db
         if url.startswith("postgres://"):
             return "postgresql+psycopg://" + url[len("postgres://"):]
         if url.startswith("postgresql://") and "+psycopg" not in url:
             return "postgresql+psycopg://" + url[len("postgresql://"):]
         return url
+
+    @property
+    def is_ephemeral_serverless_db(self) -> bool:
+        return IS_VERCEL and self.normalized_database_url.startswith("sqlite")
 
     @property
     def cors_origin_list(self) -> List[str]:

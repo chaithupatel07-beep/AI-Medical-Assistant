@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS medical_reports (
     file_size_bytes INTEGER NOT NULL,
     extraction_method VARCHAR(50) NOT NULL,
     extracted_text TEXT,
+    file_data BYTEA,
     status VARCHAR(32) NOT NULL DEFAULT 'uploaded',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -96,6 +97,7 @@ CREATE TABLE IF NOT EXISTS uploaded_images (
     storage_path VARCHAR(500) NOT NULL,
     mime_type VARCHAR(100) NOT NULL,
     file_size_bytes INTEGER NOT NULL,
+    file_data BYTEA,
     image_context TEXT,
     analysis_summary TEXT,
     observations_json TEXT NOT NULL DEFAULT '[]',
