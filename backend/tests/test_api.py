@@ -292,3 +292,16 @@ def test_multilingual_telugu_hindi_english():
     assert prof.status_code == 200
     assert prof.json()["profile"]["preferred_language"] == "te"
 
+
+def test_production_database_url_normalization():
+    settings = get_settings()
+    orig = settings.database_url
+    try:
+        settings.database_url = "postgres://user:pass@host:5432/dbname"
+        assert settings.normalized_database_url == "postgresql+psycopg://user:pass@host:5432/dbname"
+        settings.database_url = "postgresql://user:pass@host:5432/dbname"
+        assert settings.normalized_database_url == "postgresql+psycopg://user:pass@host:5432/dbname"
+    finally:
+        settings.database_url = orig
+
+

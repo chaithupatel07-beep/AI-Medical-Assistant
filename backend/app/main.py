@@ -1,11 +1,13 @@
 """FastAPI application entrypoint for AI Medical Assistant."""
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 import shutil
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.logging_config import setup_logging
@@ -55,6 +57,7 @@ async def unhandled_exception_handler(_request: Request, exc: Exception):
 @app.get("/api/health", tags=["Health"])
 def health_check():
     tesseract_ready = bool(settings.tesseract_cmd or shutil.which("tesseract"))
+    dist_path = settings.frontend_dist_path
     return {
         "status": "ok",
         "app": settings.app_name,
@@ -63,6 +66,7 @@ def health_check():
         "chat_model": settings.openai_chat_model,
         "vision_model": settings.openai_vision_model,
         "tesseract_ocr_available": tesseract_ready,
+        "frontend_served": dist_path is not None,
         "disclaimer": GENERAL_DISCLAIMER,
     }
 
@@ -75,3 +79,23 @@ app.include_router(reports.router)
 app.include_router(images.router)
 app.include_router(library.router)
 app.include_router(dashboard.router)
+
+
+_frontend_dist = settings.frontend_dist_path
+if _frontend_dist is not None:
+    _assets_dir = _frontend_dist / "assets"
+    if _assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="frontend-assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_spa(full_path: str):
+        if full_path == "api" or full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API endpoint not found.")
+        candidate = (_frontend_dist / full_path).resolve()
+        if (
+            full_path
+            and _frontend_dist.resolve() in candidate.parents
+            and candidate.is_file()
+        ):
+            return FileResponse(str(candidate))
+        return FileResponse(str(_frontend_dist / "index.html"))

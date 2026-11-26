@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     tesseract_cmd: str = ""
     max_upload_size_mb: int = 10
     upload_dir: str = str(BASE_DIR / "uploads")
+    frontend_dist_dir: str = ""
 
     model_config = SettingsConfigDict(
         env_file=str(BASE_DIR / ".env"),
@@ -39,8 +40,21 @@ class Settings(BaseSettings):
     )
 
     @property
+    def normalized_database_url(self) -> str:
+        url = (self.database_url or "").strip()
+        if url.startswith("postgres://"):
+            return "postgresql+psycopg://" + url[len("postgres://"):]
+        if url.startswith("postgresql://") and "+psycopg" not in url:
+            return "postgresql+psycopg://" + url[len("postgresql://"):]
+        return url
+
+    @property
     def cors_origin_list(self) -> List[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        return [
+            origin.strip().rstrip("/")
+            for origin in self.cors_origins.split(",")
+            if origin.strip()
+        ]
 
     @property
     def max_upload_size_bytes(self) -> int:
@@ -57,6 +71,18 @@ class Settings(BaseSettings):
         if not path.is_absolute():
             path = (BASE_DIR / path).resolve()
         return path
+
+    @property
+    def frontend_dist_path(self) -> Path | None:
+        candidates = []
+        if self.frontend_dist_dir.strip():
+            candidates.append(Path(self.frontend_dist_dir.strip()))
+        candidates.extend([BASE_DIR / "static_frontend", BASE_DIR.parent / "frontend" / "dist"])
+        for candidate in candidates:
+            resolved = candidate if candidate.is_absolute() else (BASE_DIR / candidate).resolve()
+            if (resolved / "index.html").is_file():
+                return resolved
+        return None
 
 
 @lru_cache

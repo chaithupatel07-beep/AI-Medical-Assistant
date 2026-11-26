@@ -15,6 +15,13 @@ import type {
 } from "@/types/api";
 
 const TOKEN_STORAGE_KEY = "ai_med_assistant_token";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+
+export function buildApiUrl(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path;
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE_URL}${normalized}`;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -47,7 +54,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers.set("Content-Type", "application/json");
   }
 
-  const res = await fetch(path, { ...options, headers });
+  const res = await fetch(buildApiUrl(path), { ...options, headers });
   if (!res.ok) {
     let detail = `Request failed with status ${res.status}`;
     try {
@@ -76,7 +83,7 @@ function uploadWithProgress<T>(
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", path);
+    xhr.open("POST", buildApiUrl(path));
     const token = getAuthToken();
     if (token) {
       xhr.setRequestHeader("Authorization", `Bearer ${token}`);
@@ -105,7 +112,7 @@ function uploadWithProgress<T>(
 
 export async function fetchProtectedBlob(path: string): Promise<Blob> {
   const token = getAuthToken();
-  const res = await fetch(path, {
+  const res = await fetch(buildApiUrl(path), {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) {

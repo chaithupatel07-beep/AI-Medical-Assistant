@@ -112,3 +112,28 @@ cd backend
 cd frontend
 npm run build
 ```
+
+---
+
+## Full-Stack Deployment (Frontend + Backend + PostgreSQL + OCR)
+
+This repository is configured so **every part of the application deploys together** (React SPA + FastAPI API + PostgreSQL + Tesseract OCR + AI integration):
+
+### Option A: Single-Platform Full-Stack Deploy (Render Blueprint / Railway / Docker)
+
+- **Render (`render.yaml`)**: Connect this GitHub repo as a **Render Blueprint**. It automatically provisions both:
+  1. `ai-medical-assistant-db` (PostgreSQL)
+  2. `ai-medical-assistant` (Multi-stage Docker web service building `frontend/dist` and serving it alongside `/api/*` via FastAPI + Uvicorn + Tesseract OCR)
+  - Set `OPENAI_API_KEY` (and `OPENAI_BASE_URL` / `OPENAI_CHAT_MODEL` / `OPENAI_VISION_MODEL` if using Gemini) in the Render dashboard environment variables.
+- **Railway (`railway.toml` + `Dockerfile`)**: Deploy directly from GitHub + add a Railway PostgreSQL plugin and set `DATABASE_URL` and `OPENAI_API_KEY`.
+- **Docker Compose (`docker-compose.yml`)**:
+  ```bash
+  OPENAI_API_KEY=your_key JWT_SECRET_KEY=your_32_char_secret docker compose up --build -d
+  ```
+  Runs PostgreSQL 16 (initialized with `database/schema.sql`), persistent `uploads_data`, and the unified FastAPI + React production server at `http://localhost:8000`.
+
+### Option B: Split Deployment (Vercel Frontend + Render/Railway Backend + Supabase PostgreSQL)
+
+1. **Database**: Run `database/schema.sql` in Supabase/PostgreSQL and copy the connection string into `DATABASE_URL`.
+2. **Backend**: Deploy `backend/` to Render/Railway with `DATABASE_URL`, `JWT_SECRET_KEY`, `OPENAI_API_KEY`, and `CORS_ORIGINS=https://your-frontend.vercel.app`.
+3. **Frontend (`frontend/`)**: Deploy to Vercel (using `frontend/vercel.json` for SPA routing) with `VITE_API_BASE_URL=https://your-backend-url.onrender.com`.
