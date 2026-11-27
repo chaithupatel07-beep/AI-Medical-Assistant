@@ -1,5 +1,13 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { api, AUTH_EXPIRED_EVENT, getAuthToken, setAuthToken } from "@/services/api";
+import {
+  api,
+  ApiError,
+  AUTH_EXPIRED_EVENT,
+  getAuthToken,
+  getCachedUser,
+  setAuthToken,
+  setCachedUser,
+} from "@/services/api";
 import type { User } from "@/types/api";
 
 interface AuthContextValue {
@@ -13,49 +21,99 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const TOKEN_REFRESH_INTERVAL_MS = 30 * 60 * 1000;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(() => (getAuthToken() ? getCachedUser() : null));
+  const [loading, setLoading] = useState<boolean>(() => Boolean(getAuthToken() && !getCachedUser()));
+
+  const updateUserState = useCallback((nextUser: User | null) => {
+    setCachedUser(nextUser);
+    setUser(nextUser);
+  }, []);
 
   const refreshUser = useCallback(async () => {
     const token = getAuthToken();
     if (!token) {
-      setUser(null);
+      updateUserState(null);
       setLoading(false);
       return;
     }
     try {
       const current = await api.me();
-      setUser(current);
-    } catch {
-      setAuthToken(null);
-      setUser(null);
+      updateUserState(current);
+    } catch (err) {
+      // Only clear session when the backend explicitly rejects credentials (401);
+      // preserve session across network hiccups, 5xx cold starts, or tab sleep.
+      if (err instanceof ApiError && err.status === 401) {
+        setAuthToken(null);
+        updateUserState(null);
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [updateUserState]);
 
   useEffect(() => {
     void refreshUser();
   }, [refreshUser]);
 
   useEffect(() => {
-    const onExpired = () => setUser(null);
+    const onExpired = () => {
+      setAuthToken(null);
+      updateUserState(null);
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "ai_med_assistant_token" && !event.newValue) {
+        updateUserState(null);
+      } else if (event.key === "ai_med_assistant_token" && event.newValue) {
+        void refreshUser();
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible" && getAuthToken()) {
+        void refreshUser();
+      }
+    };
+
     window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
-    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
-  }, []);
+    window.addEventListener("storage", onStorage);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    const timer = window.setInterval(() => {
+      if (getAuthToken()) {
+        api
+          .refreshToken()
+          .then((res) => {
+            setAuthToken(res.access_token);
+            updateUserState(res.user);
+          })
+          .catch(() => {
+            // Keep existing valid token if transient network failure occurs
+          });
+      }
+    }, TOKEN_REFRESH_INTERVAL_MS);
+
+    return () => {
+      window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
+      window.removeEventListener("storage", onStorage);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.clearInterval(timer);
+    };
+  }, [refreshUser, updateUserState]);
 
   const login = async (email: string, password: string) => {
     const res = await api.login({ email, password });
     setAuthToken(res.access_token);
-    setUser(res.user);
+    updateUserState(res.user);
+    setLoading(false);
   };
 
   const register = async (fullName: string, email: string, password: string) => {
     const res = await api.register({ full_name: fullName, email, password });
     setAuthToken(res.access_token);
-    setUser(res.user);
+    updateUserState(res.user);
+    setLoading(false);
   };
 
   const logout = async () => {
@@ -64,10 +122,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await api.logout();
       }
     } catch {
-      // clear local session even if server call fails
+      // Clear local session cleanly even if server call fails
     } finally {
       setAuthToken(null);
-      setUser(null);
+      updateUserState(null);
     }
   };
 
@@ -80,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         register,
         logout,
         refreshUser,
-        setUserDirect: setUser,
+        setUserDirect: updateUserState,
       }}
     >
       {children}

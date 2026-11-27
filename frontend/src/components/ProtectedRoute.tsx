@@ -10,10 +10,10 @@ export function ProtectedRoute() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-card">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-card dark:border-slate-800 dark:bg-slate-900">
           <Loader2 className="h-5 w-5 animate-spin text-medical-blue" />
-          <span className="text-sm font-medium text-slate-700">{t("common.loading")}</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{t("common.loading")}</span>
         </div>
       </div>
     );

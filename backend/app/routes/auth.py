@@ -87,7 +87,10 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    token = create_access_token(subject=user.id, extra_claims={"email": user.email})
+    token = create_access_token(
+        subject=user.id,
+        extra_claims={"email": user.email, "full_name": user.full_name},
+    )
     return AuthResponse(access_token=token, user=serialize_user(user))
 
 
@@ -117,7 +120,10 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    token = create_access_token(subject=user.id, extra_claims={"email": user.email})
+    token = create_access_token(
+        subject=user.id,
+        extra_claims={"email": user.email, "full_name": user.full_name},
+    )
     return AuthResponse(access_token=token, user=serialize_user(user))
 
 
@@ -133,6 +139,15 @@ def logout(current_user: User = Depends(get_current_user), db: Session = Depends
     )
     db.commit()
     return {"message": "Logged out successfully."}
+
+
+@router.post("/refresh", response_model=AuthResponse)
+def refresh_token(current_user: User = Depends(get_current_user)):
+    token = create_access_token(
+        subject=current_user.id,
+        extra_claims={"email": current_user.email, "full_name": current_user.full_name},
+    )
+    return AuthResponse(access_token=token, user=serialize_user(current_user))
 
 
 @router.post("/forgot-password")

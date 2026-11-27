@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.database.session import get_db
-from app.models.entities import User
+from app.models.entities import User, UserProfile
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -118,6 +118,26 @@ def get_current_user(
             detail="Invalid authentication token.",
         )
     user = db.query(User).filter(User.id == user_id).first()
+    if not user and get_settings().is_ephemeral_serverless_db:
+        token_email = str(payload.get("email") or "").strip().lower()
+        token_name = str(payload.get("full_name") or "").strip() or (
+            token_email.split("@")[0] if token_email else "Patient"
+        )
+        if token_email:
+            user = db.query(User).filter(User.email == token_email).first()
+        if not user and token_email:
+            # Cold-started serverless /tmp SQLite instance: restore verified JWT user record
+            user = User(
+                id=str(user_id),
+                email=token_email,
+                password_hash=hash_password(secrets.token_urlsafe(24)),
+                full_name=token_name,
+            )
+            db.add(user)
+            db.flush()
+            db.add(UserProfile(user_id=user.id))
+            db.commit()
+            db.refresh(user)
     if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

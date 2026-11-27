@@ -15,14 +15,57 @@ import type {
 } from "@/types/api";
 
 const TOKEN_STORAGE_KEY = "ai_med_assistant_token";
+const USER_STORAGE_KEY = "ai_med_assistant_user";
 export const AUTH_EXPIRED_EVENT = "ai-med-auth-expired";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 
-function notifyUnauthorized(status: number, path: string): void {
-  if (status === 401 && !path.includes("/api/auth/login") && !path.includes("/api/auth/register")) {
-    setAuthToken(null);
-    window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+let pendingSessionVerify: Promise<boolean> | null = null;
+
+function clearLocalSessionAndNotify(): void {
+  setAuthToken(null);
+  setCachedUser(null);
+  window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+}
+
+async function verifySessionStillValid(): Promise<boolean> {
+  const token = getAuthToken();
+  if (!token) return false;
+  if (!pendingSessionVerify) {
+    pendingSessionVerify = (async () => {
+      try {
+        const res = await fetch(buildApiUrl("/api/auth/me"), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.status === 401) {
+          clearLocalSessionAndNotify();
+          return false;
+        }
+        return true;
+      } catch {
+        // Network error / transient timeout: keep user logged in
+        return true;
+      } finally {
+        pendingSessionVerify = null;
+      }
+    })();
   }
+  return pendingSessionVerify;
+}
+
+function notifyUnauthorized(status: number, path: string): void {
+  if (
+    status !== 401 ||
+    path.includes("/api/auth/login") ||
+    path.includes("/api/auth/register") ||
+    path.includes("/api/auth/logout")
+  ) {
+    return;
+  }
+  if (path.includes("/api/auth/me") || path.includes("/api/auth/refresh")) {
+    clearLocalSessionAndNotify();
+    return;
+  }
+  void verifySessionStillValid();
 }
 
 export function buildApiUrl(path: string): string {
@@ -49,6 +92,23 @@ export function setAuthToken(token: string | null): void {
     localStorage.setItem(TOKEN_STORAGE_KEY, token);
   } else {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
+  }
+}
+
+export function getCachedUser(): User | null {
+  try {
+    const raw = localStorage.getItem(USER_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as User) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setCachedUser(user: User | null): void {
+  if (user) {
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(USER_STORAGE_KEY);
   }
 }
 
@@ -164,6 +224,8 @@ export const api = {
     }),
 
   logout: () => request<{ message: string }>("/api/auth/logout", { method: "POST" }),
+
+  refreshToken: () => request<AuthResponse>("/api/auth/refresh", { method: "POST" }),
 
   forgotPassword: (email: string) =>
     request<{ message: string; delivery_mode: string; reset_token?: string }>(

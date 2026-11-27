@@ -47,6 +47,11 @@ def v1_auth_logout(current_user: User = Depends(get_current_user), db: Session =
     return auth.logout(current_user=current_user, db=db)
 
 
+@router.post("/auth/refresh", response_model=auth.AuthResponse)
+def v1_auth_refresh(current_user: User = Depends(get_current_user)):
+    return auth.refresh_token(current_user=current_user)
+
+
 @router.get("/auth/me")
 def v1_auth_me(current_user: User = Depends(get_current_user)):
     return auth.serialize_user(current_user)

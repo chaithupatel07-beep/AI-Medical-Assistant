@@ -467,5 +467,39 @@ def test_offline_symptoms_report_image_and_v1_auth():
     assert out.status_code == 200
 
 
+def test_token_refresh_and_ephemeral_serverless_rehydration(monkeypatch):
+    user = _register_user("persist@example.com", "Persistent Patient")
+    token = user["access_token"]
+    user_id = user["user"]["id"]
+    headers = _auth_header(token)
+
+    refreshed = client.post("/api/auth/refresh", headers=headers)
+    assert refreshed.status_code == 200
+    assert refreshed.json()["user"]["email"] == "persist@example.com"
+    new_token = refreshed.json()["access_token"]
+
+    v1_refreshed = client.post("/api/v1/auth/refresh", headers=_auth_header(new_token))
+    assert v1_refreshed.status_code == 200
+
+    # Simulate cold serverless /tmp SQLite instance where user row isn't created yet
+    from app.database.session import SessionLocal
+    from app.models.entities import User
+
+    with SessionLocal() as db:
+        db.query(User).filter(User.id == user_id).delete()
+        db.commit()
+
+    monkeypatch.setattr("app.core.security.get_settings", lambda: type("S", (), {
+        "jwt_secret_key": get_settings().jwt_secret_key,
+        "jwt_algorithm": get_settings().jwt_algorithm,
+        "supabase_jwt_secret": "",
+        "is_ephemeral_serverless_db": True,
+    })())
+
+    me = client.get("/api/auth/me", headers=_auth_header(new_token))
+    assert me.status_code == 200
+    assert me.json()["email"] == "persist@example.com"
+
+
 
 
