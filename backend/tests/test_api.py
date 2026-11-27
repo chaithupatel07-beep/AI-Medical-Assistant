@@ -587,5 +587,47 @@ def test_scanned_image_report_summarizes_via_gemini_multimodal():
         assert res.json()["summary"]["lab_markers"][0]["status"] == "low"
 
 
+def test_symptom_delete_gemini_model_override_and_account_deletion():
+    settings = get_settings()
+    orig_gm = settings.gemini_model
+    orig_key = settings.gemini_api_key
+    try:
+        settings.gemini_api_key = "AIzaTestKey123"
+        settings.gemini_model = "gemini-2.5-flash"
+        assert settings.effective_chat_model == "gemini-2.5-flash"
+    finally:
+        settings.gemini_model = orig_gm
+        settings.gemini_api_key = orig_key
+
+    user = _register_user("del_user@example.com", "Delete Tester")
+    headers = _auth_header(user["access_token"])
+
+    with patch("app.services.ai_service.detect_ollama_model", new=AsyncMock(return_value=None)):
+        sym = client.post(
+            "/api/symptoms/check",
+            headers=headers,
+            json={
+                "age": 29,
+                "main_symptom": "dizziness",
+                "symptom_onset": "sudden",
+                "duration": "1 day",
+                "frequency": "intermittent",
+                "severity": "moderate",
+                "severity_score": 5,
+                "aggravating_factors": "standing up",
+                "relieving_factors": "lying down",
+            },
+        )
+        assert sym.status_code == 200
+        act_id = sym.json()["activity_id"]
+
+    assert client.delete(f"/api/symptoms/{act_id}", headers=headers).status_code == 200
+    assert client.delete(f"/api/symptoms/{act_id}", headers=headers).status_code == 404
+
+    del_acc = client.delete("/api/users/account", headers=headers)
+    assert del_acc.status_code == 200
+    assert client.get("/api/auth/me", headers=headers).status_code == 401
+
+
 
 

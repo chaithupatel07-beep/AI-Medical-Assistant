@@ -61,9 +61,13 @@ class SymptomCheckRequest(BaseModel):
     age: int = Field(..., ge=0, le=120)
     gender: Optional[str] = Field(None, max_length=32)
     main_symptom: str = Field(..., min_length=2, max_length=300)
+    symptom_onset: Optional[str] = Field(None, max_length=150)
     duration: str = Field(..., min_length=1, max_length=120)
+    frequency: Optional[str] = Field(None, max_length=120)
     severity: Literal["mild", "moderate", "severe"]
     severity_score: Optional[int] = Field(None, ge=1, le=10)
+    aggravating_factors: Optional[str] = Field(None, max_length=400)
+    relieving_factors: Optional[str] = Field(None, max_length=400)
     additional_symptoms: Optional[str] = Field(None, max_length=1500)
     relevant_context: Optional[str] = Field(None, max_length=1500)
     language: LanguageCode = "en"

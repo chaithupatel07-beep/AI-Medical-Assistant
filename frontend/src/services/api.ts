@@ -265,6 +265,8 @@ export const api = {
 
   clearActivity: () => request<{ message: string }>("/api/users/activity", { method: "DELETE" }),
 
+  deleteAccount: () => request<{ message: string }>("/api/users/account", { method: "DELETE" }),
+
   getSuggestedQuestions: (lang = "en") =>
     request<{ questions: string[] }>(`/api/chat/suggested-questions?lang=${encodeURIComponent(lang)}`),
 
@@ -306,6 +308,9 @@ export const api = {
     }),
 
   getSymptomHistory: () => request<ActivityItem[]>("/api/symptoms/history"),
+
+  deleteSymptomEntry: (activityId: string) =>
+    request<{ message: string }>(`/api/symptoms/${activityId}`, { method: "DELETE" }),
 
   uploadReport: (file: File, onProgress?: (percent: number) => void) => {
     const fd = new FormData();

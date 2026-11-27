@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, Download, History, Languages, Loader2, Stethoscope } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, History, Languages, Loader2, Stethoscope, Trash2 } from "lucide-react";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,10 @@ export function SymptomCheckerPage() {
   const [duration, setDuration] = useState("");
   const [severity, setSeverity] = useState<"mild" | "moderate" | "severe">("mild");
   const [severityScore, setSeverityScore] = useState<number>(3);
+  const [symptomOnset, setSymptomOnset] = useState("");
+  const [frequency, setFrequency] = useState("");
+  const [aggravatingFactors, setAggravatingFactors] = useState("");
+  const [relievingFactors, setRelievingFactors] = useState("");
   const [showBilingualQuestions, setShowBilingualQuestions] = useState(false);
   const [additionalSymptoms, setAdditionalSymptoms] = useState("");
   const [relevantContext, setRelevantContext] = useState("");
@@ -65,9 +69,13 @@ export function SymptomCheckerPage() {
         age: parsedAge,
         gender: gender.trim() || undefined,
         main_symptom: mainSymptom.trim(),
+        symptom_onset: symptomOnset.trim() || undefined,
         duration: duration.trim(),
+        frequency: frequency.trim() || undefined,
         severity,
         severity_score: severityScore,
+        aggravating_factors: aggravatingFactors.trim() || undefined,
+        relieving_factors: relievingFactors.trim() || undefined,
         additional_symptoms: additionalSymptoms.trim() || undefined,
         relevant_context: relevantContext.trim() || undefined,
         language,
@@ -200,6 +208,44 @@ export function SymptomCheckerPage() {
                   }}
                   className="h-2 w-full cursor-pointer accent-medical-blue"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="sym-onset">{t("sym.onset")}</Label>
+                  <Input
+                    id="sym-onset"
+                    value={symptomOnset}
+                    onChange={(e) => setSymptomOnset(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="sym-freq">{t("sym.frequency")}</Label>
+                  <Input
+                    id="sym-freq"
+                    value={frequency}
+                    onChange={(e) => setFrequency(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="sym-agg">{t("sym.aggravating")}</Label>
+                  <Input
+                    id="sym-agg"
+                    value={aggravatingFactors}
+                    onChange={(e) => setAggravatingFactors(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="sym-rel">{t("sym.relieving")}</Label>
+                  <Input
+                    id="sym-rel"
+                    value={relievingFactors}
+                    onChange={(e) => setRelievingFactors(e.target.value)}
+                  />
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -382,15 +428,31 @@ export function SymptomCheckerPage() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {history.slice(0, 5).map((item) => (
-                  <button
+                  <div
                     key={item.id}
-                    type="button"
-                    onClick={() => loadSavedCheck(item)}
-                    className="flex w-full items-center justify-between rounded-xl border border-slate-100 p-3 text-left text-sm hover:bg-slate-50"
+                    className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 p-3 text-sm hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60"
                   >
-                    <span className="font-medium text-slate-800">{item.description}</span>
-                    <span className="text-xs text-slate-500">{formatDateTime(item.created_at)}</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => loadSavedCheck(item)}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <span className="block truncate font-medium text-slate-800 dark:text-slate-200">{item.description}</span>
+                      <span className="text-xs text-slate-500">{formatDateTime(item.created_at)}</span>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Delete symptom record"
+                      onClick={() => {
+                        void api.deleteSymptomEntry(item.id).then(() => {
+                          setHistory((prev) => prev.filter((x) => x.id !== item.id));
+                        });
+                      }}
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 ))}
               </CardContent>
             </Card>

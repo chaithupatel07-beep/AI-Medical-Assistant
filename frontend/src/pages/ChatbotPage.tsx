@@ -2,9 +2,12 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   Bot,
+  Check,
+  Copy,
   Eraser,
   Loader2,
   MessageSquarePlus,
+  RotateCcw,
   Send,
   Sparkles,
   Trash2,
@@ -37,6 +40,8 @@ export function ChatbotPage() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastFailedPrompt, setLastFailedPrompt] = useState<string | null>(null);
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const skipNextSessionLoadRef = useRef<string | null>(null);
@@ -174,8 +179,10 @@ export function ChatbotPage() {
         setEmergencyBanner(turn.emergency_banner);
         setEmergencyReasons(turn.emergency_reasons);
       }
+      setLastFailedPrompt(null);
     } catch (err) {
       console.error("Chat send error:", err);
+      setLastFailedPrompt(trimmed);
       setError(err instanceof Error ? err.message : "Failed to send message.");
     } finally {
       setSending(false);
@@ -317,7 +324,30 @@ export function ChatbotPage() {
                       {isUser ? (
                         <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                       ) : (
-                        <MarkdownRenderer content={msg.content} />
+                        <div className="space-y-2">
+                          <MarkdownRenderer content={msg.content} />
+                          <div className="flex items-center justify-end border-t border-slate-200/70 pt-1.5 dark:border-slate-700/70">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void navigator.clipboard?.writeText(msg.content);
+                                setCopiedMsgId(msg.id);
+                                window.setTimeout(() => setCopiedMsgId(null), 1800);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                            >
+                              {copiedMsgId === msg.id ? (
+                                <>
+                                  <Check className="h-3 w-3 text-emerald-600" /> {t("chat.copied")}
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="h-3 w-3" /> {t("chat.copy")}
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
                     {isUser && (
@@ -343,8 +373,18 @@ export function ChatbotPage() {
 
           <div className="border-t border-slate-100 bg-white p-4">
             {error && (
-              <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                {error}
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                <span>{error}</span>
+                {lastFailedPrompt && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void sendText(lastFailedPrompt)}
+                  >
+                    <RotateCcw className="h-3 w-3" /> {t("chat.retry")}
+                  </Button>
+                )}
               </div>
             )}
             <form onSubmit={handleSubmit} className="flex items-end gap-2">

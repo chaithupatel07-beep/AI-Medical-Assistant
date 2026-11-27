@@ -11,7 +11,7 @@ import {
   Trash2,
   User as UserIcon,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +34,8 @@ export function PersonalHealthPage({
 }: {
   initialTab?: PersonalHealthTab;
 }) {
-  const { user, setUserDirect } = useAuth();
+  const { user, setUserDirect, logout } = useAuth();
+  const navigate = useNavigate();
   const { language, setLanguage, t } = useLanguage();
   const [activeTab, setActiveTab] = useState<PersonalHealthTab>(initialTab);
   const [reports, setReports] = useState<MedicalReport[]>([]);
@@ -621,6 +622,35 @@ export function PersonalHealthPage({
                       )}
                     </Button>
                   </form>
+
+                  <div className="mt-8 border-t border-red-100 pt-6 dark:border-red-950">
+                    <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+                      {t("rec.deleteAccount")}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {t("rec.deleteAccountWarn")}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400"
+                      onClick={() => {
+                        if (!window.confirm(t("rec.deleteAccountWarn"))) return;
+                        void api
+                          .deleteAccount()
+                          .then(async () => {
+                            await logout();
+                            navigate("/");
+                          })
+                          .catch((err) =>
+                            setError(err instanceof Error ? err.message : "Failed to delete account.")
+                          );
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" /> {t("rec.deleteAccount")}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>

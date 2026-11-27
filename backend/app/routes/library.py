@@ -19,7 +19,9 @@ def get_categories(lang: str = Query("en")):
     }
 
 
+@router.get("")
 @router.get("/articles")
+@router.get("/search")
 def list_articles(
     category: Optional[str] = Query(None),
     q: Optional[str] = Query(None),

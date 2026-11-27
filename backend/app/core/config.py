@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     ai_provider: str = "openai"
     openai_api_key: str = ""
     gemini_api_key: str = ""
+    gemini_model: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
     openai_chat_model: str = "gpt-4o-mini"
     openai_vision_model: str = "gpt-4o-mini"
@@ -135,6 +136,8 @@ class Settings(BaseSettings):
 
     @property
     def effective_chat_model(self) -> str:
+        if self._uses_gemini_key and (self.gemini_model or "").strip():
+            return self.gemini_model.strip()
         model = (self.openai_chat_model or "").strip()
         if self._uses_gemini_key and (not model or model == "gpt-4o-mini"):
             return "gemini-3.5-flash-lite"
@@ -142,6 +145,8 @@ class Settings(BaseSettings):
 
     @property
     def effective_vision_model(self) -> str:
+        if self._uses_gemini_key and (self.gemini_model or "").strip():
+            return self.gemini_model.strip()
         model = (self.openai_vision_model or "").strip()
         if self._uses_gemini_key and (not model or model == "gpt-4o-mini"):
             return "gemini-3.5-flash-lite"

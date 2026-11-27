@@ -7,11 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.core.security import get_current_user, hash_password, verify_password
 from app.database.session import get_db
-from app.models.entities import User, UserActivity, UserProfile
+from app.models.entities import MedicalReport, UploadedImage, User, UserActivity, UserProfile
 from app.routes.auth import serialize_user
 from app.schemas.auth import ChangePasswordRequest, UserProfileUpdate, UserResponse
 from app.schemas.medical import ActivityItemResponse
 from app.utils.activity import log_activity
+from app.utils.file_validation import delete_stored_file
 
 router = APIRouter(prefix="/api/users", tags=["User Management"])
 
@@ -152,3 +153,19 @@ def clear_activity_history(
     db.query(UserActivity).filter(UserActivity.user_id == current_user.id).delete()
     db.commit()
     return {"message": "Activity history cleared."}
+
+
+@router.delete("/account")
+def delete_own_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    reports = db.query(MedicalReport).filter(MedicalReport.user_id == current_user.id).all()
+    images = db.query(UploadedImage).filter(UploadedImage.user_id == current_user.id).all()
+    for rep in reports:
+        delete_stored_file(rep.storage_path)
+    for img in images:
+        delete_stored_file(img.storage_path)
+    db.delete(current_user)
+    db.commit()
+    return {"message": "Account and all associated health records deleted permanently."}

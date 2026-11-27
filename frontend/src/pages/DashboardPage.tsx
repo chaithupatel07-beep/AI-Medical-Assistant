@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   Activity,
   ArrowRight,
@@ -144,6 +145,37 @@ export function DashboardPage() {
           );
         })}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-medical-blue" /> {t("dash.analyticsTitle")}
+          </CardTitle>
+          <CardDescription>{t("dash.analyticsSub")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-56 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={[
+                  { name: t("dash.statReports"), count: data.stats.total_reports },
+                  { name: t("dash.statSummaries"), count: data.stats.summarized_reports },
+                  { name: t("dash.statChats"), count: data.stats.total_chat_sessions },
+                  { name: t("dash.statSymptoms"), count: data.stats.total_symptom_checks },
+                  { name: t("dash.statImages"), count: data.stats.total_images },
+                ]}
+                margin={{ top: 8, right: 16, left: -12, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="count" fill="#2563EB" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

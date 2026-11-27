@@ -400,12 +400,16 @@ async def generate_symptom_guidance(
 
     user_prompt = (
         f"Age: {payload['age']}\n"
-        f"Gender (optional): {payload.get('gender') or 'Not specified'}\n"
+        f"Gender / Biological sex (optional): {payload.get('gender') or 'Not specified'}\n"
         f"Main symptom: {payload['main_symptom']}\n"
+        f"Symptom onset: {payload.get('symptom_onset') or 'Not specified'}\n"
         f"Duration: {payload['duration']}\n"
+        f"Frequency: {payload.get('frequency') or 'Not specified'}\n"
         f"Self-reported severity: {payload['severity']}"
         + (f" ({payload['severity_score']}/10)" if payload.get("severity_score") else "")
         + "\n"
+        f"Aggravating factors: {payload.get('aggravating_factors') or 'None specified'}\n"
+        f"Relieving factors: {payload.get('relieving_factors') or 'None specified'}\n"
         f"Additional symptoms: {payload.get('additional_symptoms') or 'None reported'}\n"
         f"Relevant context: {payload.get('relevant_context') or 'None provided'}\n"
     )

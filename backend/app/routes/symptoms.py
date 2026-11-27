@@ -3,7 +3,7 @@
 import json
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.safety import detect_emergency_signals, normalize_language
@@ -26,7 +26,12 @@ async def check_symptoms(
     combined_text = " ".join(
         filter(
             None,
-            [payload.main_symptom, payload.additional_symptoms or "", payload.relevant_context or ""],
+            [
+                payload.main_symptom,
+                payload.additional_symptoms or "",
+                payload.aggravating_factors or "",
+                payload.relevant_context or "",
+            ],
         )
     )
     lang = normalize_language(payload.language)
@@ -93,3 +98,25 @@ def symptom_check_history(
         )
         for row in rows
     ]
+
+
+@router.delete("/{activity_id}")
+def delete_symptom_entry(
+    activity_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    row = (
+        db.query(UserActivity)
+        .filter(
+            UserActivity.id == activity_id,
+            UserActivity.user_id == current_user.id,
+            UserActivity.activity_type == "symptom_check",
+        )
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Symptom record not found.")
+    db.delete(row)
+    db.commit()
+    return {"message": "Symptom record deleted."}

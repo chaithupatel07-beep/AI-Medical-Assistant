@@ -79,9 +79,13 @@ export interface SymptomCheckPayload {
   age: number;
   gender?: string;
   main_symptom: string;
+  symptom_onset?: string;
   duration: string;
+  frequency?: string;
   severity: "mild" | "moderate" | "severe";
   severity_score?: number;
+  aggravating_factors?: string;
+  relieving_factors?: string;
   additional_symptoms?: string;
   relevant_context?: string;
 }
