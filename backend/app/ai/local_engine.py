@@ -80,9 +80,121 @@ _LAB_GLOSSARY: Dict[str, Dict[str, str]] = {
         "te": "ఎముకల బలం, కాల్షియం శోషణ మరియు రోగనిరోధక శక్తికి ముఖ్యమైన విటమిన్.",
         "hi": "हड्डियों की मजबूती, कैल्शियम अवशोषण और प्रतिरक्षा के लिए आवश्यक विटामिन।",
     },
+    "urea": {
+        "en": "Nitrogenous waste processed by the liver and filtered out by the kidneys (evaluated alongside creatinine).",
+        "te": "కిడ్నీల పనితీరును అంచనా వేయడానికి క్రియాటినిన్‌తో పాటు చూసే వ్యర్థ పదార్థం.",
+        "hi": "लिवर द्वारा निर्मित और किडनी द्वारा छाना जाने वाला अपशिष्ट पदार्थ (क्रिएटिनिन के साथ देखा जाता है)।",
+    },
+    "sodium": {
+        "en": "Key electrolyte regulating body fluid balance, nerve signals, and blood pressure.",
+        "te": "శరీర ద్రవ సమతుల్యత మరియు రక్తపోటును నియంత్రించే ముఖ్య ఎలక్ట్రోలైట్.",
+        "hi": "शरीर में पानी का संतुलन और ब्लड प्रेशर नियंत्रित करने वाला मुख्य इलेक्ट्रोलाइट।",
+    },
+    "potassium": {
+        "en": "Vital electrolyte supporting heart rhythm, muscle contraction, and nerve function.",
+        "te": "గుండె లయ మరియు కండరాల పనితీరుకు అవసరమైన ముఖ్య ఎలక్ట్రోలైట్.",
+        "hi": "हृदय की धड़कन और मांसपेशियों के कार्य के लिए महत्वपूर्ण इलेक्ट्रोलाइट।",
+    },
+    "chloride": {
+        "en": "Electrolyte helping maintain acid-base balance and body hydration alongside sodium.",
+        "te": "శరీర ఆమ్ల-క్షార సమతుల్యతను కాపాడటానికి సోడియంతో కలిసి పనిచేసే ఎలక్ట్రోలైట్.",
+        "hi": "शरीर में एसिड-बेस संतुलन बनाए रखने में मदद करने वाला इलेक्ट्रोलाइट।",
+    },
+    "bicarbonate": {
+        "en": "Buffer electrolyte helping keep blood pH within a healthy narrow range.",
+        "te": "రక్తపు pH సమతుల్యతను కాపాడటానికి సహాయపడే బఫర్ ఎలక్ట్రోలైట్.",
+        "hi": "रक्त के pH संतुलन को बनाए रखने में मदद करने वाला इलेक्ट्रोलाइट।",
+    },
 }
 
 _CHAT_TOPICS: List[Tuple[Tuple[str, ...], Dict[str, str]]] = [
+    (
+        ("hba1c", "a1c", "diabetes", "blood sugar", "glucose", "షుగర్", "మధుమేహం", "शुगर", "डायबिटीज"),
+        {
+            "en": (
+                "### Understanding Blood Sugar & HbA1c\n\n"
+                "- **Fasting Blood Glucose** shows blood sugar at a single moment after fasting.\n"
+                "- **Hemoglobin A1c (HbA1c)** estimates your average blood sugar over roughly the past **2 to 3 months**.\n"
+                "- **Educational Note**: Diet, fiber intake, physical activity, sleep, and prescribed treatments all affect glucose trends. "
+                "Discuss your specific target range with your healthcare provider."
+            ),
+            "te": (
+                "### రక్తంలో చక్కెర & HbA1c అవగాహన\n\n"
+                "- **ఫాస్టింగ్ బ్లడ్ షుగర్** ఆ సమయంలో ఉన్న చక్కెర స్థాయిని చూపిస్తుంది.\n"
+                "- **HbA1c** గత **2 నుండి 3 నెలల** సగటు రక్తపు చక్కెర స్థాయిని చూపిస్తుంది.\n"
+                "- **గమనిక**: ఫైబర్ ఉన్న ఆహారం, నడక మరియు మంచి నిద్ర చక్కెర నియంత్రణకు సహాయపడతాయి. మీ లక్ష్య పరిధిని డాక్టర్‌తో నిర్ధారించుకోండి."
+            ),
+            "hi": (
+                "### ब्लड शुगर और HbA1c की जानकारी\n\n"
+                "- **फास्टिंग ब्लड शुगर** किसी एक समय के शुगर स्तर को दिखाता है।\n"
+                "- **HbA1c** पिछले **2 से 3 महीनों** के औसत शुगर स्तर को दर्शाता है।\n"
+                "- **शैक्षिक नोट**: संतुलित फाइबर आहार, नियमित चलना और अच्छी नींद मदद करते हैं। अपनी लक्ष्य सीमा डॉक्टर से पूछें।"
+            ),
+        },
+    ),
+    (
+        ("hemoglobin", "low hb", "hb ", "anemia", "rbc", "ferritin", "iron", "హీమోగ్లోబిన్", "రక్తహీనత", "हीमोग्लोबिन", "खून की कमी"),
+        {
+            "en": (
+                "### Understanding Hemoglobin & Red Blood Cells\n\n"
+                "- **What Hemoglobin Does**: Hemoglobin is an iron-rich protein in red blood cells that carries oxygen from your lungs to tissues across the body.\n"
+                "- **Common Causes of Low Hemoglobin**: Iron deficiency, vitamin B12 or folate deficiency, chronic inflammation, blood loss, or kidney/bone-marrow factors.\n"
+                "- **Questions to Ask Your Clinician**: *Is my MCV (cell size) low or high? Should ferritin, iron studies, vitamin B12, or folate be checked?*"
+            ),
+            "te": (
+                "### హెమోగ్లోబిన్ మరియు ఎర్ర రక్త కణాల అవగాహన\n\n"
+                "- **పని**: ఊపిరితిత్తుల నుండి శరీరమంతా ఆక్సిజన్‌ను తీసుకువెళ్లే ముఖ్యమైన ప్రోటీన్.\n"
+                "- **తక్కువ కావడానికి సాధారణ కారణాలు**: ఐరన్ లోపం, విటమిన్ B12 లేదా ఫోలేట్ లోపం, దీర్ఘకాలిక రక్త నష్టం లేదా కిడ్నీ సంబంధిత అంశాలు.\n"
+                "- **డాక్టర్‌ను అడగాల్సినవి**: *నా ఫెరిటిన్ లేదా విటమిన్ B12 పరీక్షలు అవసరమా?*"
+            ),
+            "hi": (
+                "### हीमोग्लोबिन और लाल रक्त कोशिकाओं की जानकारी\n\n"
+                "- **भूमिका**: हीमोग्लोबिन फेफड़ों से शरीर के अंगों तक ऑक्सीजन पहुंचाने वाला प्रोटीन है।\n"
+                "- **कम होने के सामान्य कारण**: आयरन की कमी, विटामिन B12 या फोलेट की कमी, रक्त की हानि, या पुरानी सूजन।\n"
+                "- **डॉक्टर से पूछें**: *क्या मुझे फेरिटिन, आयरन या विटामिन B12 जांच करवानी चाहिए?*"
+            ),
+        },
+    ),
+    (
+        ("kidney", "renal", "creatinine", "urea", "egfr", "bun", "కిడ్నీ", "క్రియాటినిన్", "किडनी", "क्रिएटिनिन"),
+        {
+            "en": (
+                "### Kidney Health, Urea & Creatinine Explained\n\n"
+                "- **Serum Creatinine & Urea**: Waste products filtered by healthy kidneys. Dehydration, high blood pressure, diabetes, certain pain relievers (NSAIDs), or intense exercise can influence numbers.\n"
+                "- **Electrolytes (Sodium, Potassium, Chloride, Bicarbonate)**: Kidneys balance fluid and electrolyte levels closely.\n"
+                "- **Protective Habits**: Keep blood pressure and blood sugar well managed and review all OTC painkillers/supplements with your doctor."
+            ),
+            "te": (
+                "### కిడ్నీ ఆరోగ్యం, యూరియా & క్రియాటినిన్\n\n"
+                "- **క్రియాటినిన్ & యూరియా**: కిడ్నీలు రక్తం నుండి శుభ్రం చేసే వ్యర్థ పదార్థాలు. నీటి కొరత, అధిక బీపీ, షుగర్ లేదా కొన్ని నొప్పి మందులు విలువలను ప్రభావితం చేయవచ్చు.\n"
+                "- **జాగ్రత్తలు**: బీపీ, షుగర్ నియంత్రణలో ఉంచుకోవాలి మరియు డాక్టర్ సలహా లేకుండా నొప్పి మందులు తరచుగా వాడకూడదు."
+            ),
+            "hi": (
+                "### किडनी स्वास्थ्य, यूरिया और क्रिएटिनिन\n\n"
+                "- **क्रिएटिनिन और यूरिया**: किडनी द्वारा छाने जाने वाले अपशिष्ट पदार्थ हैं। पानी की कमी, हाई BP, शुगर या कुछ दर्द की दवाएँ इन्हें प्रभावित कर सकती हैं।\n"
+                "- **बचाव**: ब्लड प्रेशर व ब्लड शुगर नियंत्रित रखें और डॉक्टर की सलाह बिना दर्द निवारक दवाएँ न लें।"
+            ),
+        },
+    ),
+    (
+        ("electrolyte", "sodium", "potassium", "chloride", "bicarbonate", "సోడియం", "పొటాషియం", "सोडियम", "पोटैशियम"),
+        {
+            "en": (
+                "### Electrolytes: Sodium, Potassium, Chloride & Bicarbonate\n\n"
+                "- **Why They Matter**: Electrolytes regulate nerve signaling, muscle contraction, heart rhythm, hydration, and acid-base (pH) balance.\n"
+                "- **Common Influences**: Hydration status, vomiting/diarrhea, kidney function, diuretics, or blood pressure medications.\n"
+                "- Always interpret mild shifts alongside your clinician and kidney function tests."
+            ),
+            "te": (
+                "### ఎలక్ట్రోలైట్స్ (సోడియం, పొటాషియం, క్లోరైడ్, బైకార్బొనేట్)\n\n"
+                "- ఇవి శరీరంలో నీటి సమతుల్యత, నరాల సంకేతాలు మరియు గుండె లయను సరిగా ఉంచడంలో సహాయపడతాయి."
+            ),
+            "hi": (
+                "### इलेक्ट्रोलाइट्स (सोडियम, पोटैशियम, क्लोराइड, बाइकार्बोनेट)\n\n"
+                "- ये शरीर में तरल संतुलन, नसों के संकेत और हृदय की धड़कन को संतुलित रखने में मदद करते हैं।"
+            ),
+        },
+    ),
     (
         ("hba1c", "a1c", "diabetes", "blood sugar", "glucose", "షుగర్", "మధుమేహం", "शुगर", "डायबिटीज"),
         {
@@ -224,25 +336,26 @@ def generate_rule_based_chat_reply(
             break
 
     if not body:
+        topic_preview = " ".join((user_message or "").strip().split())[:100]
         body = {
             "en": (
-                "### General Health Education Guidance\n\n"
-                "I am running in **Built-in Educational Engine** mode (no external AI API key configured). "
-                "I can explain common medical terms (like **HbA1c**, **blood pressure**, **cholesterol/lipids**, **CBC/hemoglobin**, **TSH**), "
-                "fever/dehydration warning signs, and doctor-visit preparation.\n\n"
-                "- **Safety Reminder**: For personalized medical questions, diagnosis, or treatment, please consult a licensed healthcare professional."
+                f"### Educational Note on Your Question\n\n"
+                f"You asked about: *\"{topic_preview}\"*\n\n"
+                "- **Key Context**: Trusted health sources (**MedlinePlus, CDC, WHO**) emphasize evaluating how long a concern has lasted, any accompanying symptoms, and relevant lab history or medications.\n"
+                "- **Helpful Clinician Questions**: *What are the most common explanations for this? Are any targeted lab tests needed? What changes mean I should seek prompt evaluation?*\n"
+                "- **Note**: Set `GEMINI_API_KEY` on the server for full live generative AI answers tailored to complex multi-part questions."
             ),
             "te": (
-                "### సాధారణ ఆరోగ్య అవగాహన సూచన\n\n"
-                "ప్రస్తుతం **అంతర్నిర్మిత విద్యా ఇంజిన్** మోడ్ నడుస్తోంది (API కీ అవసరం లేదు). "
-                "మీరు **HbA1c**, **రక్తపోటు (BP)**, **కొలెస్ట్రాల్**, **జ్వరం/డీహైడ్రేషన్**, లేదా **డాక్టర్ భేటీ ప్రశ్నలు** గురించి అడగవచ్చు.\n\n"
-                "- **భద్రతా గమనిక**: వ్యక్తిగత వైద్య నిర్ధారణ లేదా చికిత్స కోసం దయచేసి అర్హత కలిగిన డాక్టర్‌ను సంప్రదించండి."
+                f"### మీ ప్రశ్నపై విద్యా సూచన\n\n"
+                f"మీరు అడిగిన అంశం: *\"{topic_preview}\"*\n\n"
+                "- **ముఖ్య సూచన**: MedlinePlus, CDC, WHO మార్గదర్శకాల ప్రకారం లక్షణాల కాలపరిమితి, తీవ్రత మరియు గత ఆరోగ్య చరిత్ర ఆధారంగా డాక్టర్ సలహా తీసుకోవడం ముఖ్యం.\n"
+                "- మరింత వివరణాత్మక జనరేటివ్ AI సమాధానాల కోసం సర్వర్‌లో `GEMINI_API_KEY` సెటప్ చేయవచ్చు."
             ),
             "hi": (
-                "### सामान्य स्वास्थ्य शिक्षा मार्गदर्शन\n\n"
-                "यह **अंतर्निर्मित शैक्षिक इंजन** मोड में चल रहा है (किसी बाहरी API कुंजी की आवश्यकता नहीं है)। "
-                "आप **HbA1c**, **ब्लड प्रेशर**, **कोलेस्ट्रॉल**, **बुखार/डीहाइड्रेशन**, या **डॉक्टर से पूछने योग्य प्रश्नों** के बारे में पूछ सकते हैं।\n\n"
-                "- **सुरक्षा सूचना**: व्यक्तिगत निदान या उपचार के लिए कृपया योग्य डॉक्टर से परामर्श लें।"
+                f"### आपके प्रश्न पर शैक्षिक मार्गदर्शन\n\n"
+                f"आपने पूछा: *\"{topic_preview}\"*\n\n"
+                "- **मुख्य बिंदु**: MedlinePlus, CDC और WHO के अनुसार लक्षणों की अवधि, गंभीरता और पिछली जांच रिपोर्ट के आधार पर डॉक्टर से परामर्श लेना उपयोगी होता है।\n"
+                "- विस्तृत जनरेटिव AI उत्तरों के लिए सर्वर में `GEMINI_API_KEY` सेट किया जा सकता है।"
             ),
         }[lang]
 
@@ -265,36 +378,41 @@ def generate_rule_based_symptom_guidance(
     severity_score = payload.get("severity_score")
     severity_display = f"{severity} ({severity_score}/10)" if severity_score else severity
     duration = str(payload.get("duration", "")).strip()
+    additional = str(payload.get("additional_symptoms") or "").strip()
+    context_note = str(payload.get("relevant_context") or "").strip()
     age = payload.get("age")
+
+    extra_detail = f" Alongside: {additional}." if additional else ""
+    ctx_detail = f" Context noted: {context_note}." if context_note else ""
 
     text_map = {
         "en": {
             "overview": (
                 f"Educational summary (Offline Rules Engine, aligned with MedlinePlus/CDC/WHO guidance) for age {age} reporting '{symptom}' "
-                f"({severity_display} severity, duration: {duration}). This is general educational context, not a medical diagnosis."
+                f"({severity_display} severity, duration: {duration}).{extra_detail}{ctx_detail} This is general educational context, not a medical diagnosis."
             ),
-            "exp1_t": "Common self-limiting or lifestyle-related contributors (possibility)",
-            "exp1_d": "Everyday factors such as viral exposure, fatigue, dehydration, muscle strain, or sleep disruption commonly contribute to mild-to-moderate symptoms.",
-            "exp2_t": "Underlying inflammatory, allergic, or chronic factor (possibility)",
-            "exp2_d": "Persistent or recurring symptoms can sometimes reflect allergies, localized irritation, or an underlying condition best evaluated by a clinician.",
+            "exp1_t": f"Common self-limiting contributors associated with '{symptom}' (possibility)",
+            "exp1_d": f"Everyday factors such as viral exposure, hydration changes, sleep disruption, or mild irritation can contribute to '{symptom}' lasting {duration}.",
+            "exp2_t": f"Targeted clinical or inflammatory factors behind '{symptom}' (possibility)",
+            "exp2_d": f"If '{symptom}' persists beyond {duration} or feels {severity_display}, an underlying infection, allergy, deficiency, or localized condition should be evaluated by a clinician.",
             "steps": [
-                "Track symptom timing, temperature (if applicable), and any triggers in a brief log.",
-                "Stay hydrated with water or oral rehydration fluids and prioritize rest.",
-                "Avoid taking unprescribed antibiotics or leftover prescription medicines.",
+                f"Keep a brief log noting when '{symptom}' intensifies, improves, and any triggers over {duration}.",
+                "Stay well hydrated with water or oral rehydration fluids and avoid self-medicating with unprescribed antibiotics.",
+                "Share exact symptom timing and severity (" + severity_display + ") during your medical appointment.",
             ],
             "warnings": [
                 "Difficulty breathing, chest pain/pressure, or bluish lips",
                 "Confusion, fainting, sudden weakness, or slurred speech",
-                "Persistent high fever or inability to keep fluids down",
+                f"Rapid worsening of '{symptom}', persistent high fever, or inability to keep fluids down",
             ],
             "when": (
-                "Seek prompt or urgent medical attention if symptoms are severe, worsening, "
-                "or persist beyond a few days without improvement."
+                f"Seek prompt or urgent medical attention if '{symptom}' feels severe ({severity_display}), keeps worsening, "
+                "or does not improve over the next 2–3 days."
             ),
             "questions": [
-                "What are the most likely non-serious vs. concerning explanations for these symptoms?",
-                "Are any basic exams or lab tests recommended?",
-                "Which warning signs mean I should return for urgent care?",
+                f"What are the most likely non-serious vs. concerning explanations for '{symptom}' lasting {duration}?",
+                f"Given '{symptom}' ({severity_display}), are any basic physical exams or lab tests recommended?",
+                "Which specific red-flag warning signs mean I should seek urgent care immediately?",
             ],
         },
         "te": {

@@ -342,8 +342,8 @@ def test_gemini_api_key_autodetection_and_sanitization():
         assert settings.effective_api_key == "AIzaSyTestGeminiKey123"
         assert settings.effective_provider == "gemini"
         assert settings.effective_base_url == "https://generativelanguage.googleapis.com/v1beta/openai/"
-        assert settings.effective_chat_model == "gemini-2.5-flash"
-        assert settings.effective_vision_model == "gemini-2.5-flash"
+        assert settings.effective_chat_model == "gemini-3.5-flash-lite"
+        assert settings.effective_vision_model == "gemini-3.5-flash-lite"
     finally:
         settings.openai_api_key = orig_oai
         settings.gemini_api_key = orig_gem
@@ -534,6 +534,57 @@ def test_chat_auto_create_missing_session_and_isolation():
             json={"content": "Trying Alice session", "language": "en"},
         )
         assert cross.status_code == 404
+
+
+def test_scanned_image_report_summarizes_via_gemini_multimodal():
+    user = _register_user("scanned_rep@example.com", "Scanned Tester")
+    headers = _auth_header(user["access_token"])
+
+    from io import BytesIO
+    from PIL import Image
+
+    buf = BytesIO()
+    Image.new("RGB", (60, 60), color=(240, 240, 240)).save(buf, format="JPEG")
+
+    # Upload scanned JPEG with no embedded text while offline
+    with patch("app.services.ocr_service._extract_image_text_vision_ai", new=AsyncMock(return_value="")):
+        up = client.post(
+            "/api/reports/upload",
+            headers=headers,
+            files={"file": ("adithya_lab.jpg", buf.getvalue(), "image/jpeg")},
+        )
+    assert up.status_code == 201
+    report_id = up.json()["id"]
+    assert up.json()["extraction_method"] == "gemini_vision_pending"
+
+    # Summarize scanned JPEG via multimodal Gemini mock -> updates extracted_text & markers cleanly
+    multimodal_summary = {
+        "extracted_text": "Hemoglobin 11.0 g/dL (Ref 13.0-17.0)\nS. Urea 39 mg/dL",
+        "plain_summary": "Hemoglobin is below the printed reference range; S. Urea is 39 mg/dL.",
+        "lab_markers": [
+            {
+                "name": "Hemoglobin",
+                "value": "11.0",
+                "unit": "g/dL",
+                "reference_range": "13.0 - 17.0",
+                "status": "low",
+                "explanation": "Carries oxygen in red blood cells.",
+            }
+        ],
+        "medical_terms": [],
+        "questions_for_doctor": ["Should iron studies be checked?"],
+        "warnings": [],
+        "disclaimer": "Educational use only.",
+    }
+    with patch(
+        "app.routes.reports.generate_report_summary",
+        new=AsyncMock(return_value=(multimodal_summary, "gemini-3.5-flash-lite")),
+    ):
+        res = client.post(f"/api/reports/{report_id}/summarize", headers=headers)
+        assert res.status_code == 200
+        assert res.json()["status"] == "summarized"
+        assert "11.0" in (res.json()["extracted_text"] or "")
+        assert res.json()["summary"]["lab_markers"][0]["status"] == "low"
 
 
 

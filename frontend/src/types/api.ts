@@ -37,7 +37,7 @@ export interface HealthStatus {
   ai_provider: string;
   chat_model: string;
   vision_model: string;
-  tesseract_ocr_available: boolean;
+  gemini_multimodal_ready?: boolean;
   database_mode?: "persistent" | "ephemeral_sqlite";
   disclaimer: string;
 }

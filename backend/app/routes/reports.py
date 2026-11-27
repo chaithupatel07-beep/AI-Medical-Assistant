@@ -121,19 +121,35 @@ async def summarize_medical_report(
     report = _get_owned_report(db, report_id, current_user.id)
     language = normalize_language(lang)
 
-    if not report.extracted_text or not report.extracted_text.strip():
+    raw_bytes: bytes | None = None
+    path = Path(report.storage_path)
+    if path.is_file():
+        raw_bytes = path.read_bytes()
+    elif report.file_data:
+        raw_bytes = bytes(report.file_data)
+
+    extracted_text = (report.extracted_text or "").strip()
+    if not extracted_text and not raw_bytes:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=(
-                "No readable text could be extracted from this file. "
-                "For scanned PDFs or images, install Tesseract OCR or configure OPENAI_API_KEY in backend/.env."
+                "No readable text or stored report file was found. Please upload the PDF/JPG/PNG report again."
             ),
         )
 
-    deterministic_markers = parse_lab_markers_from_text(report.extracted_text)
+    deterministic_markers = parse_lab_markers_from_text(extracted_text) if extracted_text else []
     summary_payload, model_used = await generate_report_summary(
-        report.extracted_text, deterministic_markers, language=language
+        extracted_text,
+        deterministic_markers,
+        language=language,
+        raw_bytes=raw_bytes,
+        mime_type=report.mime_type,
     )
+
+    returned_extracted = str(summary_payload.get("extracted_text") or "").strip()
+    if returned_extracted and not extracted_text:
+        report.extracted_text = returned_extracted
+        report.extraction_method = "gemini_multimodal"
 
     if report.summary:
         summary = report.summary

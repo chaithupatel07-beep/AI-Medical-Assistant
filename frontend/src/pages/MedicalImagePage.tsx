@@ -47,8 +47,8 @@ export function MedicalImagePage() {
       return;
     }
     const lower = file.name.toLowerCase();
-    if (![".jpg", ".jpeg", ".png"].some((ext) => lower.endsWith(ext))) {
-      setError("Only JPG, JPEG, and PNG images are supported.");
+    if (![".jpg", ".jpeg", ".png", ".webp"].some((ext) => lower.endsWith(ext))) {
+      setError("Only JPG, JPEG, PNG, and WEBP images are supported.");
       return;
     }
 

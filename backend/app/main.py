@@ -68,7 +68,6 @@ async def unhandled_exception_handler(_request: Request, exc: Exception):
 async def health_check():
     from app.ai.local_engine import detect_ollama_model
 
-    tesseract_ready = bool(settings.tesseract_cmd or shutil.which("tesseract"))
     dist_path = settings.frontend_dist_path
     ollama_model = None
     if not settings.is_ai_configured:
@@ -100,7 +99,7 @@ async def health_check():
         "ai_provider": ai_provider,
         "chat_model": chat_model,
         "vision_model": vision_model,
-        "tesseract_ocr_available": tesseract_ready,
+        "gemini_multimodal_ready": settings.is_ai_configured and settings._uses_gemini_key,
         "frontend_served": dist_path is not None,
         "database_mode": "ephemeral_sqlite" if settings.is_ephemeral_serverless_db else "persistent",
         "disclaimer": GENERAL_DISCLAIMER,

@@ -1,16 +1,14 @@
-"""PDF text extraction (PyMuPDF primary + pypdf fallback) and image/scanned-PDF OCR."""
+"""PDF text extraction (PyMuPDF + pypdf) and native Google Gemini multimodal Vision extraction."""
 
 import base64
 from io import BytesIO
 import logging
-import shutil
 from typing import Tuple
 
+import httpx
 import pymupdf as fitz
 from openai import AsyncOpenAI
-from PIL import Image
 from pypdf import PdfReader
-import pytesseract
 
 from app.core.config import get_settings
 
@@ -50,20 +48,67 @@ def _render_pdf_pages_png(raw_bytes: bytes, max_pages: int = 3) -> list[bytes]:
         return pages_png
 
 
-def _extract_image_text_tesseract(raw_bytes: bytes) -> str:
+async def _extract_via_gemini_inline_data(raw_bytes: bytes, mime_type: str) -> str:
     settings = get_settings()
-    tesseract_exe = settings.tesseract_cmd or shutil.which("tesseract")
-    if not tesseract_exe:
+    if not settings.is_ai_configured or not settings._uses_gemini_key:
         return ""
-    pytesseract.pytesseract.tesseract_cmd = tesseract_exe
-    with Image.open(BytesIO(raw_bytes)) as img:
-        return (pytesseract.image_to_string(img) or "").strip()
+
+    b64 = base64.b64encode(raw_bytes).decode("utf-8")
+    prompt = (
+        "Transcribe ALL visible text, lab test names, measured values, units, and printed "
+        "reference ranges from this medical report line by line verbatim. "
+        "Do not invent or infer missing numbers."
+    )
+    payload = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {"text": prompt},
+                    {"inlineData": {"mimeType": mime_type, "data": b64}},
+                ],
+            }
+        ],
+        "generationConfig": {"temperature": 0.0, "maxOutputTokens": 3000},
+    }
+
+    models_to_try = [settings.effective_vision_model]
+    if "gemini-2.5-flash" not in models_to_try:
+        models_to_try.append("gemini-2.5-flash")
+
+    async with httpx.AsyncClient(timeout=40.0) as client:
+        for model_name in models_to_try:
+            url = (
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{model_name}:generateContent?key={settings.effective_api_key}"
+            )
+            try:
+                res = await client.post(url, json=payload)
+                if res.status_code == 404:
+                    continue
+                if res.status_code == 200:
+                    data = res.json()
+                    parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+                    text = "\n".join(p.get("text", "") for p in parts if isinstance(p, dict)).strip()
+                    if text:
+                        return text
+                logger.warning("Gemini Vision transcription status %s: %s", res.status_code, res.text[:200])
+                break
+            except Exception as exc:
+                logger.warning("Gemini Vision transcription failed: %s", exc)
+                break
+    return ""
 
 
 async def _extract_image_text_vision_ai(raw_bytes: bytes, mime_type: str) -> str:
     settings = get_settings()
     if not settings.is_ai_configured:
         return ""
+    if settings._uses_gemini_key:
+        gemini_text = await _extract_via_gemini_inline_data(raw_bytes, mime_type)
+        if gemini_text:
+            return gemini_text
+
     client = AsyncOpenAI(
         api_key=settings.effective_api_key,
         base_url=settings.effective_base_url,
@@ -102,27 +147,12 @@ async def _extract_image_text_vision_ai(raw_bytes: bytes, mime_type: str) -> str
         )
         return (response.choices[0].message.content or "").strip()
     except Exception as exc:
-        logger.warning("Vision OCR fallback failed: %s", exc)
+        logger.warning("Vision transcription fallback failed: %s", exc)
         return ""
 
 
-async def _ocr_image_bytes(raw_bytes: bytes, mime_type: str) -> Tuple[str, str]:
-    try:
-        tesseract_text = _extract_image_text_tesseract(raw_bytes)
-        if tesseract_text:
-            return tesseract_text, "tesseract_ocr"
-    except Exception as exc:
-        logger.warning("Tesseract OCR failed: %s", exc)
-
-    vision_text = await _extract_image_text_vision_ai(raw_bytes, mime_type)
-    if vision_text:
-        return vision_text, "vision_ai_ocr"
-
-    return "", "ocr_unavailable"
-
-
 async def extract_report_text(raw_bytes: bytes, mime_type: str) -> Tuple[str, str]:
-    """Extract text from PDF (PyMuPDF + OCR fallback) or image reports."""
+    """Extract text from PDF (PyMuPDF + Gemini multimodal fallback) or image reports."""
     if mime_type == "application/pdf":
         try:
             text = _extract_pdf_text_pymupdf(raw_bytes)
@@ -138,23 +168,27 @@ async def extract_report_text(raw_bytes: bytes, mime_type: str) -> Tuple[str, st
         except Exception as exc:
             logger.warning("pypdf extraction failed: %s", exc)
 
-        # Scanned PDF fallback: render up to 3 pages via PyMuPDF and run OCR
+        # Scanned PDF: try native Gemini inlineData directly first, then rendered pages
+        gemini_pdf_text = await _extract_via_gemini_inline_data(raw_bytes, "application/pdf")
+        if gemini_pdf_text:
+            return gemini_pdf_text, "gemini_multimodal"
+
         rendered_pages = _render_pdf_pages_png(raw_bytes, max_pages=3)
         if rendered_pages:
             chunks = []
-            methods = set()
             for png_bytes in rendered_pages:
-                ocr_text, ocr_method = await _ocr_image_bytes(png_bytes, "image/png")
-                if ocr_text:
-                    chunks.append(ocr_text)
-                    methods.add(ocr_method)
+                vision_text = await _extract_image_text_vision_ai(png_bytes, "image/png")
+                if vision_text:
+                    chunks.append(vision_text)
             if chunks:
-                primary_method = sorted(methods)[0]
-                return "\n\n".join(chunks), f"pymupdf_{primary_method}"
+                return "\n\n".join(chunks), "gemini_vision"
 
-        return "", "pdf_no_embedded_text"
+        return "", "gemini_vision_pending"
 
-    if mime_type in {"image/jpeg", "image/png"}:
-        return await _ocr_image_bytes(raw_bytes, mime_type)
+    if mime_type in {"image/jpeg", "image/png", "image/webp"}:
+        vision_text = await _extract_image_text_vision_ai(raw_bytes, mime_type)
+        if vision_text:
+            return vision_text, "gemini_vision"
+        return "", "gemini_vision_pending"
 
     return "", "unsupported"

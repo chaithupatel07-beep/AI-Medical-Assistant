@@ -6,6 +6,7 @@ import logging
 from typing import Any, Dict, List
 
 from fastapi import HTTPException, status
+import httpx
 from openai import APIStatusError, AsyncOpenAI, AuthenticationError, RateLimitError
 
 from app.ai.local_engine import (
@@ -157,12 +158,12 @@ def _raise_provider_error(exc: Exception, fallback_detail: str) -> None:
     if isinstance(exc, AuthenticationError):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="AI provider rejected OPENAI_API_KEY (401 Unauthorized). Check backend/.env.",
+            detail="AI provider rejected the configured API key (401 Unauthorized). Check GEMINI_API_KEY / OPENAI_API_KEY.",
         ) from exc
     if isinstance(exc, RateLimitError):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="AI provider rate limit or quota exceeded (429). Please check your provider billing or try again shortly.",
+            detail="AI provider rate limit or quota exceeded (429). Please check billing/quota or try again shortly.",
         ) from exc
     if isinstance(exc, APIStatusError):
         raise HTTPException(
@@ -173,6 +174,82 @@ def _raise_provider_error(exc: Exception, fallback_detail: str) -> None:
         status_code=status.HTTP_502_BAD_GATEWAY,
         detail=fallback_detail,
     ) from exc
+
+
+async def _call_gemini_native(
+    *,
+    api_key: str,
+    model_name: str,
+    system_instruction: str,
+    contents: List[Dict[str, Any]],
+    response_mime_type: str | None = None,
+    temperature: float = 0.2,
+    max_output_tokens: int = 3072,
+) -> tuple[str, str]:
+    """Call native Google Gemini REST generateContent (supports inlineData PDF/image + JSON)."""
+    models_to_try = [model_name]
+    for fallback_m in ("gemini-2.5-flash", "gemini-3.5-flash-lite"):
+        if fallback_m not in models_to_try:
+            models_to_try.append(fallback_m)
+
+    gen_config: Dict[str, Any] = {
+        "temperature": temperature,
+        "maxOutputTokens": max_output_tokens,
+    }
+    if response_mime_type:
+        gen_config["responseMimeType"] = response_mime_type
+
+    payload: Dict[str, Any] = {
+        "systemInstruction": {"parts": [{"text": system_instruction}]},
+        "contents": contents,
+        "generationConfig": gen_config,
+    }
+
+    last_err = ""
+    last_status = 502
+    async with httpx.AsyncClient(timeout=45.0) as client:
+        for candidate_model in models_to_try:
+            url = (
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{candidate_model}:generateContent?key={api_key}"
+            )
+            try:
+                res = await client.post(url, json=payload)
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Failed to connect to Google Gemini API: {exc}",
+                ) from exc
+
+            if res.status_code == 404:
+                last_err = res.text[:300]
+                last_status = 404
+                continue
+            if res.status_code == 429:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=f"Google Gemini rate limit / quota exceeded: {res.text[:250]}",
+                )
+            if res.status_code >= 400:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Google Gemini API error ({res.status_code}): {res.text[:300]}",
+                )
+
+            data = res.json()
+            parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+            text = "\n".join(p.get("text", "") for p in parts if isinstance(p, dict)).strip()
+            if not text:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Google Gemini returned an empty response.",
+                )
+            return text, candidate_model
+
+    raise HTTPException(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        detail=f"Configured Gemini model unavailable ({last_status}): {last_err}",
+    )
 
 
 def _parse_json_response(raw_content: str) -> Dict[str, Any]:
@@ -211,26 +288,44 @@ async def generate_chat_reply(
 ) -> tuple[str, str]:
     settings = get_settings()
     lang = normalize_language(language)
+
+    system_text = f"{CHAT_SYSTEM_PROMPT}\n\nLANGUAGE REQUIREMENT:\n{LANGUAGE_DIRECTIVES[lang]}"
+    if emergency_detected:
+        system_text += (
+            "\n\nEMERGENCY NOTICE: The user's message triggered emergency warning detection. "
+            "Begin your response immediately with a clear recommendation to call local emergency "
+            "services or seek immediate emergency medical care."
+        )
+
+    if settings.is_ai_configured and settings._uses_gemini_key:
+        contents: List[Dict[str, Any]] = []
+        for item in history[-16:]:
+            role = "model" if item.get("role") == "assistant" else "user"
+            txt = (item.get("content") or "").strip()
+            if txt:
+                contents.append({"role": role, "parts": [{"text": txt}]})
+        contents.append({"role": "user", "parts": [{"text": user_message}]})
+
+        content, used_model = await _call_gemini_native(
+            api_key=settings.effective_api_key,
+            model_name=settings.effective_chat_model,
+            system_instruction=system_text,
+            contents=contents,
+            temperature=0.3,
+            max_output_tokens=2048,
+        )
+        emergency_text = get_disclaimer("emergency", lang)
+        if emergency_detected and "112" not in content and "emergency" not in content.lower():
+            content = f"**{emergency_text}**\n\n{content}"
+        return content, used_model
+
     client, model_name, mode = await _resolve_ai_target(vision=False)
 
     if mode == "built_in_offline" or client is None:
         return generate_rule_based_chat_reply(user_message, emergency_detected, lang)
 
-    messages: List[Dict[str, str]] = [
-        {"role": "system", "content": f"{CHAT_SYSTEM_PROMPT}\n\nLANGUAGE REQUIREMENT:\n{LANGUAGE_DIRECTIVES[lang]}"}
-    ]
-    if emergency_detected:
-        messages.append(
-            {
-                "role": "system",
-                "content": (
-                    "The user's message triggered emergency warning detection. "
-                    "Begin your response with a clear recommendation to call local emergency "
-                    "services or seek immediate emergency medical care."
-                ),
-            }
-        )
-    messages.extend(history[-12:])
+    messages: List[Dict[str, str]] = [{"role": "system", "content": system_text}]
+    messages.extend(history[-16:])
     messages.append({"role": "user", "content": user_message})
 
     try:
@@ -265,6 +360,7 @@ def _normalize_symptom_payload(
     emergency_detected: bool,
     emergency_reasons: List[str],
     lang: str,
+    severity_score: int | None = None,
 ) -> Dict[str, Any]:
     parsed["educational_overview"] = str(parsed.get("educational_overview") or "")
     explanations = parsed.get("possible_explanations")
@@ -285,7 +381,7 @@ def _normalize_symptom_payload(
     if not parsed["questions_for_doctor_en"]:
         parsed["questions_for_doctor_en"] = list(parsed["questions_for_doctor"])
     parsed["when_to_consult_doctor"] = str(parsed.get("when_to_consult_doctor") or "")
-    parsed["severity_score"] = payload.get("severity_score")
+    parsed["severity_score"] = severity_score
     parsed["emergency_detected"] = emergency_detected
     parsed["emergency_reasons"] = emergency_reasons
     if emergency_detected:
@@ -302,10 +398,6 @@ async def generate_symptom_guidance(
 ) -> tuple[Dict[str, Any], str]:
     settings = get_settings()
     lang = normalize_language(language)
-    client, model_name, mode = await _resolve_ai_target(vision=False)
-
-    if mode == "built_in_offline" or client is None:
-        return generate_rule_based_symptom_guidance(payload, emergency_detected, emergency_reasons, lang)
 
     user_prompt = (
         f"Age: {payload['age']}\n"
@@ -324,6 +416,39 @@ async def generate_symptom_guidance(
             "Emphasize immediate emergency care."
         )
 
+    system_text = (
+        f"{SYMPTOM_SYSTEM_PROMPT}\n\nLANGUAGE REQUIREMENT:\n"
+        f"{LANGUAGE_DIRECTIVES[lang]} Keep all JSON keys strictly in English, "
+        "and write all JSON string values in the requested language."
+    )
+
+    if settings.is_ai_configured and settings._uses_gemini_key:
+        raw_text, used_model = await _call_gemini_native(
+            api_key=settings.effective_api_key,
+            model_name=settings.effective_chat_model,
+            system_instruction=system_text,
+            contents=[{"role": "user", "parts": [{"text": user_prompt}]}],
+            response_mime_type="application/json",
+            temperature=0.25,
+            max_output_tokens=2500,
+        )
+        parsed = _parse_json_response(raw_text)
+        return (
+            _normalize_symptom_payload(
+                parsed,
+                emergency_detected,
+                emergency_reasons,
+                lang,
+                severity_score=payload.get("severity_score"),
+            ),
+            used_model,
+        )
+
+    client, model_name, mode = await _resolve_ai_target(vision=False)
+
+    if mode == "built_in_offline" or client is None:
+        return generate_rule_based_symptom_guidance(payload, emergency_detected, emergency_reasons, lang)
+
     try:
         kwargs: Dict[str, Any] = dict(_provider_extra_kwargs(settings, mode))
         if mode == "cloud_ai":
@@ -331,14 +456,7 @@ async def generate_symptom_guidance(
         response = await client.chat.completions.create(
             model=model_name,
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        f"{SYMPTOM_SYSTEM_PROMPT}\n\nLANGUAGE REQUIREMENT:\n"
-                        f"{LANGUAGE_DIRECTIVES[lang]} Keep all JSON keys strictly in English, "
-                        "and write all JSON string values in the requested language."
-                    ),
-                },
+                {"role": "system", "content": system_text},
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.2,
@@ -346,7 +464,16 @@ async def generate_symptom_guidance(
             **kwargs,
         )
         parsed = _parse_json_response(response.choices[0].message.content or "{}")
-        return _normalize_symptom_payload(parsed, emergency_detected, emergency_reasons, lang), model_name
+        return (
+            _normalize_symptom_payload(
+                parsed,
+                emergency_detected,
+                emergency_reasons,
+                lang,
+                severity_score=payload.get("severity_score"),
+            ),
+            model_name,
+        )
     except HTTPException:
         raise
     except Exception as exc:
@@ -403,9 +530,73 @@ async def generate_report_summary(
     extracted_text: str,
     deterministic_markers: List[Dict[str, Any]],
     language: str = "en",
+    raw_bytes: bytes | None = None,
+    mime_type: str | None = None,
 ) -> tuple[Dict[str, Any], str]:
     settings = get_settings()
     lang = normalize_language(language)
+
+    system_text = (
+        f"{REPORT_SUMMARY_SYSTEM_PROMPT}\n\n"
+        "You may also include \"extracted_text\" in the JSON output with the verbatim report text when reading from an image or PDF.\n\n"
+        f"LANGUAGE REQUIREMENT:\n{LANGUAGE_DIRECTIVES[lang]} Keep all JSON keys and marker status values "
+        "('high', 'low', 'normal', 'unknown') strictly in English, and write "
+        "plain_summary, explanations, medical_terms, questions_for_doctor, and warnings "
+        "in the requested language."
+    )
+
+    if settings.is_ai_configured and settings._uses_gemini_key:
+        parts: List[Dict[str, Any]] = []
+        if raw_bytes and mime_type:
+            b64 = base64.b64encode(raw_bytes).decode("utf-8")
+            parts.append(
+                {
+                    "text": (
+                        "Read EVERY visible laboratory test row, value, unit, and reference range directly from this medical report file. "
+                        "If printed reference ranges are absent for a marker, clearly mark reference_range as 'Not specified in report' and note standard MedlinePlus educational adult reference guidance in explanation.\n\n"
+                        + (f"Preliminary extracted text:\n{extracted_text[:8000]}\n" if extracted_text else "")
+                    )
+                }
+            )
+            parts.append({"inlineData": {"mimeType": mime_type, "data": b64}})
+            model_to_use = settings.effective_vision_model
+        else:
+            parts.append(
+                {
+                    "text": (
+                        "Here is the extracted text from an uploaded medical report:\n\n"
+                        f"\"\"\"\n{extracted_text[:12000]}\n\"\"\"\n\n"
+                        "Deterministic line-parser preliminary markers:\n"
+                        f"{json.dumps(deterministic_markers, indent=2)}"
+                    )
+                }
+            )
+            model_to_use = settings.effective_chat_model
+
+        raw_text, used_model = await _call_gemini_native(
+            api_key=settings.effective_api_key,
+            model_name=model_to_use,
+            system_instruction=system_text,
+            contents=[{"role": "user", "parts": parts}],
+            response_mime_type="application/json",
+            temperature=0.1,
+            max_output_tokens=3500,
+        )
+        parsed = _parse_json_response(raw_text)
+        extracted_from_ai = str(parsed.get("extracted_text") or "").strip()
+        normalized = _normalize_report_payload(parsed, lang)
+        if extracted_from_ai:
+            normalized["extracted_text"] = extracted_from_ai
+        return normalized, used_model
+
+    if not extracted_text.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "No embedded text was found in this scanned report. Set GEMINI_API_KEY in server environment variables to read scanned PDFs and lab images with Gemini Multimodal Vision."
+            ),
+        )
+
     client, model_name, mode = await _resolve_ai_target(vision=False)
 
     if mode == "built_in_offline" or client is None:
@@ -426,16 +617,7 @@ async def generate_report_summary(
         response = await client.chat.completions.create(
             model=model_name,
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        f"{REPORT_SUMMARY_SYSTEM_PROMPT}\n\nLANGUAGE REQUIREMENT:\n"
-                        f"{LANGUAGE_DIRECTIVES[lang]} Keep all JSON keys and marker status values "
-                        "('high', 'low', 'normal', 'unknown') strictly in English, and write "
-                        "plain_summary, explanations, medical_terms, questions_for_doctor, and warnings "
-                        "in the requested language."
-                    ),
-                },
+                {"role": "system", "content": system_text},
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.1,
@@ -461,6 +643,47 @@ async def analyze_medical_image_with_vision(
 ) -> tuple[Dict[str, Any], str]:
     settings = get_settings()
     lang = normalize_language(language)
+    context_line = f"User-provided context: {image_context}" if image_context else "No additional user context provided."
+    system_text = (
+        f"{IMAGE_VISION_SYSTEM_PROMPT}\n\nLANGUAGE REQUIREMENT:\n"
+        f"{LANGUAGE_DIRECTIVES[lang]} Keep all JSON keys strictly in English, "
+        "and write all JSON string values in the requested language."
+    )
+
+    if settings.is_ai_configured and settings._uses_gemini_key:
+        b64 = base64.b64encode(raw_bytes).decode("utf-8")
+        raw_text, used_model = await _call_gemini_native(
+            api_key=settings.effective_api_key,
+            model_name=settings.effective_vision_model,
+            system_instruction=system_text,
+            contents=[
+                {
+                    "role": "user",
+                    "parts": [
+                        {
+                            "text": (
+                                f"{context_line}\n\n"
+                                "Provide detailed, neutral, non-diagnostic educational visual observations about this uploaded medical-related image, "
+                                "explicitly noting limitations, uncertainty, and recommending professional medical review."
+                            )
+                        },
+                        {"inlineData": {"mimeType": mime_type, "data": b64}},
+                    ],
+                }
+            ],
+            response_mime_type="application/json",
+            temperature=0.2,
+            max_output_tokens=2048,
+        )
+        parsed = _parse_json_response(raw_text)
+        parsed["analysis_summary"] = str(parsed.get("analysis_summary") or "")
+        obs = parsed.get("observations")
+        parsed["observations"] = [str(x) for x in obs] if isinstance(obs, list) else []
+        parsed["limitations"] = str(parsed.get("limitations") or "")
+        parsed["recommended_next_steps"] = str(parsed.get("recommended_next_steps") or "")
+        parsed["disclaimer"] = get_disclaimer("image", lang)
+        return parsed, used_model
+
     client, model_name, mode = await _resolve_ai_target(vision=True)
 
     if mode == "built_in_offline" or client is None:
@@ -468,7 +691,6 @@ async def analyze_medical_image_with_vision(
 
     b64 = base64.b64encode(raw_bytes).decode("utf-8")
     data_url = f"data:{mime_type};base64,{b64}"
-    context_line = f"User-provided context: {image_context}" if image_context else "No additional user context provided."
 
     try:
         kwargs: Dict[str, Any] = dict(_provider_extra_kwargs(settings, mode))
@@ -480,14 +702,7 @@ async def analyze_medical_image_with_vision(
             max_tokens=2048,
             **kwargs,
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        f"{IMAGE_VISION_SYSTEM_PROMPT}\n\nLANGUAGE REQUIREMENT:\n"
-                        f"{LANGUAGE_DIRECTIVES[lang]} Keep all JSON keys strictly in English, "
-                        "and write all JSON string values in the requested language."
-                    ),
-                },
+                {"role": "system", "content": system_text},
                 {
                     "role": "user",
                     "content": [
@@ -518,4 +733,4 @@ async def analyze_medical_image_with_vision(
         if mode == "ollama_local":
             logger.warning("Local Ollama image analysis failed (%s); falling back to local Pillow inspector.", exc)
             return analyze_image_locally(raw_bytes, mime_type, image_context, lang)
-        _raise_provider_error(exc, "Vision AI analysis failed. Verify OPENAI_API_KEY and OPENAI_VISION_MODEL.")
+        _raise_provider_error(exc, "Vision AI analysis failed. Verify GEMINI_API_KEY and vision model settings.")

@@ -11,14 +11,15 @@ from PIL import Image, UnidentifiedImageError
 
 from app.core.config import get_settings
 
-REPORT_ALLOWED_EXTENSIONS: Set[str] = {".pdf", ".jpg", ".jpeg", ".png"}
-IMAGE_ALLOWED_EXTENSIONS: Set[str] = {".jpg", ".jpeg", ".png"}
+REPORT_ALLOWED_EXTENSIONS: Set[str] = {".pdf", ".jpg", ".jpeg", ".png", ".webp"}
+IMAGE_ALLOWED_EXTENSIONS: Set[str] = {".jpg", ".jpeg", ".png", ".webp"}
 
 MIME_BY_EXTENSION = {
     ".pdf": "application/pdf",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".png": "image/png",
+    ".webp": "image/webp",
 }
 
 
@@ -35,6 +36,8 @@ def _detect_magic_type(data: bytes) -> str | None:
         return "image/jpeg"
     if data.startswith(b"\x89PNG\r\n\x1a\n"):
         return "image/png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
     return None
 
 
@@ -78,7 +81,7 @@ async def validate_and_store_upload(
             detail="File signature does not match its file extension. Please upload a valid file.",
         )
 
-    if detected_mime in {"image/jpeg", "image/png"}:
+    if detected_mime in {"image/jpeg", "image/png", "image/webp"}:
         try:
             with Image.open(BytesIO(raw_bytes)) as img:
                 img.verify()

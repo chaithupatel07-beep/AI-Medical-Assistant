@@ -45,7 +45,6 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = ""
 
-    tesseract_cmd: str = ""
     max_upload_size_mb: int = 10
     upload_dir: str = str(DEFAULT_WRITABLE_DIR / "uploads")
     frontend_dist_dir: str = ""
@@ -138,14 +137,14 @@ class Settings(BaseSettings):
     def effective_chat_model(self) -> str:
         model = (self.openai_chat_model or "").strip()
         if self._uses_gemini_key and (not model or model == "gpt-4o-mini"):
-            return "gemini-2.5-flash"
+            return "gemini-3.5-flash-lite"
         return model or "gpt-4o-mini"
 
     @property
     def effective_vision_model(self) -> str:
         model = (self.openai_vision_model or "").strip()
         if self._uses_gemini_key and (not model or model == "gpt-4o-mini"):
-            return "gemini-2.5-flash"
+            return "gemini-3.5-flash-lite"
         return model or "gpt-4o-mini"
 
     @property

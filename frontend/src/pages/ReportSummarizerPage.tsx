@@ -11,7 +11,7 @@ import { api, downloadProtectedFile } from "@/services/api";
 import type { LabMarker, MedicalReport } from "@/types/api";
 import { formatBytes, formatDateTime } from "@/utils/format";
 
-const ALLOWED_EXT = [".pdf", ".jpg", ".jpeg", ".png"];
+const ALLOWED_EXT = [".pdf", ".jpg", ".jpeg", ".png", ".webp"];
 
 function statusBadgeVariant(status: LabMarker["status"]) {
   if (status === "high") return "danger";
@@ -49,7 +49,7 @@ export function ReportSummarizerPage() {
     setError(null);
     const lower = file.name.toLowerCase();
     if (!ALLOWED_EXT.some((ext) => lower.endsWith(ext))) {
-      setError("Unsupported file format. Please upload a PDF, JPG, JPEG, or PNG report.");
+      setError("Unsupported file format. Please upload a PDF, JPG, JPEG, PNG, or WEBP report.");
       return;
     }
 
