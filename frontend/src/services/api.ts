@@ -285,6 +285,12 @@ export const api = {
       body: JSON.stringify({ content, language }),
     }),
 
+  sendDirectChatMessage: (content: string, language = "en", sessionId?: string | null) =>
+    request<ChatTurnResponse>("/api/chat/send", {
+      method: "POST",
+      body: JSON.stringify({ session_id: sessionId || null, content, language }),
+    }),
+
   clearChatSession: (sessionId: string) =>
     request<ChatSessionDetail>(`/api/chat/sessions/${sessionId}/clear`, {
       method: "POST",

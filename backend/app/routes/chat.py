@@ -11,6 +11,7 @@ from app.core.security import get_current_user
 from app.database.session import get_db
 from app.models.entities import ChatMessage, ChatSession, User
 from app.schemas.medical import (
+    ChatDirectSendRequest,
     ChatMessageCreate,
     ChatMessageResponse,
     ChatSessionCreate,
@@ -86,6 +87,32 @@ def _get_owned_session(db: Session, session_id: str, user_id: str) -> ChatSessio
     return session
 
 
+def _get_or_create_owned_session(
+    db: Session,
+    session_id: str | None,
+    user_id: str,
+    seed_text: str = "",
+) -> ChatSession:
+    cleaned_id = (session_id or "").strip()
+    if cleaned_id and cleaned_id not in {"new", "auto", "null", "undefined"}:
+        existing = db.query(ChatSession).filter(ChatSession.id == cleaned_id).first()
+        if existing:
+            if existing.user_id != user_id:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found.")
+            return existing
+
+    clean_seed = " ".join((seed_text or "").strip().split())
+    title = (clean_seed[:45] + ("..." if len(clean_seed) > 45 else "")) if clean_seed else "New Health Conversation"
+    kwargs: dict = {"user_id": user_id, "title": title}
+    if cleaned_id and cleaned_id not in {"new", "auto", "null", "undefined"} and len(cleaned_id) <= 36:
+        kwargs["id"] = cleaned_id
+    session = ChatSession(**kwargs)
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session
+
+
 @router.get("/suggested-questions")
 def get_suggested_questions(lang: str = Query("en")):
     code = normalize_language(lang)
@@ -144,6 +171,20 @@ def get_session_detail(
     )
 
 
+@router.post("/send", response_model=ChatTurnResponse)
+async def send_direct_message(
+    payload: ChatDirectSendRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return await send_message(
+        session_id=payload.session_id or "new",
+        payload=ChatMessageCreate(content=payload.content, language=payload.language),
+        current_user=current_user,
+        db=db,
+    )
+
+
 @router.post("/sessions/{session_id}/messages", response_model=ChatTurnResponse)
 async def send_message(
     session_id: str,
@@ -151,10 +192,11 @@ async def send_message(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    session = _get_owned_session(db, session_id, current_user.id)
     content = payload.content.strip()
     if not content:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message cannot be empty.")
+
+    session = _get_or_create_owned_session(db, session_id, current_user.id, seed_text=content)
 
     lang = normalize_language(payload.language)
     emergency_detected, emergency_reasons = detect_emergency_signals(content, lang)

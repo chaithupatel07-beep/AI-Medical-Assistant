@@ -73,15 +73,8 @@ async def v1_chat(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    session_id = payload.session_id
-    if not session_id:
-        session = ChatSession(user_id=current_user.id, title="New Health Conversation")
-        db.add(session)
-        db.commit()
-        db.refresh(session)
-        session_id = session.id
     return await chat.send_message(
-        session_id=session_id,
+        session_id=payload.session_id or "new",
         payload=chat.ChatMessageCreate(content=payload.message, language=payload.language),
         current_user=current_user,
         db=db,

@@ -18,6 +18,12 @@ class ChatMessageCreate(BaseModel):
     language: LanguageCode = "en"
 
 
+class ChatDirectSendRequest(BaseModel):
+    session_id: Optional[str] = Field(None, max_length=64)
+    content: str = Field(..., min_length=1, max_length=4000)
+    language: LanguageCode = "en"
+
+
 class ChatMessageResponse(BaseModel):
     id: str
     session_id: str

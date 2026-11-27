@@ -39,6 +39,7 @@ export function ChatbotPage() {
   const [error, setError] = useState<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const skipNextSessionLoadRef = useRef<string | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -72,6 +73,10 @@ export function ChatbotPage() {
       setMessages([]);
       return;
     }
+    if (skipNextSessionLoadRef.current === activeSessionId) {
+      skipNextSessionLoadRef.current = null;
+      return;
+    }
     setLoadingMessages(true);
     setError(null);
     api
@@ -84,9 +89,18 @@ export function ChatbotPage() {
           setEmergencyReasons([]);
         }
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load conversation."))
+      .catch((err) => {
+        console.error("Chat session load error:", err);
+        if (err instanceof Error && err.message.toLowerCase().includes("not found")) {
+          setActiveSessionId(null);
+          setSearchParams({}, { replace: true });
+          setMessages([]);
+          return;
+        }
+        setError(err instanceof Error ? err.message : "Failed to load conversation.");
+      })
       .finally(() => setLoadingMessages(false));
-  }, [activeSessionId]);
+  }, [activeSessionId, setSearchParams]);
 
   const handleNewSession = async () => {
     setError(null);
@@ -144,16 +158,12 @@ export function ChatbotPage() {
     setError(null);
     setSending(true);
     try {
-      let targetSessionId = activeSessionId;
-      if (!targetSessionId) {
-        const created = await api.createChatSession("New Health Conversation");
-        setSessions((prev) => [created, ...prev]);
-        targetSessionId = created.id;
-        setActiveSessionId(created.id);
-        setSearchParams({ session: created.id });
+      const turn = await api.sendDirectChatMessage(trimmed, language, activeSessionId);
+      if (activeSessionId !== turn.session.id) {
+        skipNextSessionLoadRef.current = turn.session.id;
+        setActiveSessionId(turn.session.id);
+        setSearchParams({ session: turn.session.id }, { replace: true });
       }
-
-      const turn = await api.sendChatMessage(targetSessionId, trimmed, language);
       setInput("");
       setMessages((prev) => [...prev, turn.user_message, turn.assistant_message]);
       setSessions((prev) => {
@@ -165,6 +175,7 @@ export function ChatbotPage() {
         setEmergencyReasons(turn.emergency_reasons);
       }
     } catch (err) {
+      console.error("Chat send error:", err);
       setError(err instanceof Error ? err.message : "Failed to send message.");
     } finally {
       setSending(false);

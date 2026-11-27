@@ -501,5 +501,40 @@ def test_token_refresh_and_ephemeral_serverless_rehydration(monkeypatch):
     assert me.json()["email"] == "persist@example.com"
 
 
+def test_chat_auto_create_missing_session_and_isolation():
+    alice = _register_user("autochat_a@example.com", "Alice")
+    bob = _register_user("autochat_b@example.com", "Bob")
+    alice_h = _auth_header(alice["access_token"])
+    bob_h = _auth_header(bob["access_token"])
+
+    with patch("app.services.ai_service.detect_ollama_model", new=AsyncMock(return_value=None)):
+        # 1. Direct send with no session_id auto-creates session titled from message
+        direct = client.post(
+            "/api/chat/send",
+            headers=alice_h,
+            json={"content": "What does hemoglobin measure?", "language": "en"},
+        )
+        assert direct.status_code == 200
+        created_id = direct.json()["session"]["id"]
+        assert "hemoglobin" in direct.json()["session"]["title"].lower()
+
+        # 2. Sending to a stale/non-existent session_id auto-creates it instead of 404
+        stale = client.post(
+            "/api/chat/sessions/missing-session-123/messages",
+            headers=alice_h,
+            json={"content": "Follow-up on HbA1c", "language": "en"},
+        )
+        assert stale.status_code == 200
+        assert stale.json()["session"]["id"] == "missing-session-123"
+
+        # 3. Cross-user access to Alice's existing session remains blocked with 404
+        cross = client.post(
+            f"/api/chat/sessions/{created_id}/messages",
+            headers=bob_h,
+            json={"content": "Trying Alice session", "language": "en"},
+        )
+        assert cross.status_code == 404
+
+
 
 

@@ -86,12 +86,22 @@ create policy "profiles_owner_all" on public.profiles
   for all using (auth.uid() = id) with check (auth.uid() = id);
 
 drop policy if exists "chat_sessions_owner_all" on public.chat_sessions;
-create policy "chat_sessions_owner_all" on public.chat_sessions
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "Users manage own chat sessions" on public.chat_sessions;
+create policy "Users manage own chat sessions"
+  on public.chat_sessions
+  for all
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 drop policy if exists "chat_messages_owner_all" on public.chat_messages;
-create policy "chat_messages_owner_all" on public.chat_messages
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "Users manage own chat messages" on public.chat_messages;
+create policy "Users manage own chat messages"
+  on public.chat_messages
+  for all
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 drop policy if exists "medical_reports_owner_all" on public.medical_reports;
 create policy "medical_reports_owner_all" on public.medical_reports
