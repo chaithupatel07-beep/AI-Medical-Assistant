@@ -11,7 +11,6 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { AiConfigNotice } from "@/components/AiConfigNotice";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/hooks/useLanguage";
 import { api } from "@/services/api";
-import type { AiMode, ChatMessage, ChatSession } from "@/types/api";
+import type { ChatMessage, ChatSession } from "@/types/api";
 import { formatDateTime } from "@/utils/format";
 
 export function ChatbotPage() {
@@ -32,8 +31,6 @@ export function ChatbotPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [input, setInput] = useState("");
-  const [aiConfigured, setAiConfigured] = useState(true);
-  const [aiMode, setAiMode] = useState<AiMode | undefined>(undefined);
   const [emergencyBanner, setEmergencyBanner] = useState<string | null>(null);
   const [emergencyReasons, setEmergencyReasons] = useState<string[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
@@ -48,11 +45,10 @@ export function ChatbotPage() {
   }, [messages, sending]);
 
   useEffect(() => {
-    Promise.all([api.listChatSessions(), api.health()])
-      .then(([sessionList, health]) => {
+    api
+      .listChatSessions()
+      .then((sessionList) => {
         setSessions(sessionList);
-        setAiConfigured(health.ai_configured);
-        setAiMode(health.ai_mode);
 
         if (initialSessionId && sessionList.some((s) => s.id === initialSessionId)) {
           setActiveSessionId(initialSessionId);
@@ -68,7 +64,7 @@ export function ChatbotPage() {
     api
       .getSuggestedQuestions(language)
       .then((res) => setSuggestedQuestions(res.questions))
-      .catch(() => {});
+      .catch(() => { });
   }, [language]);
 
   useEffect(() => {
@@ -199,8 +195,6 @@ export function ChatbotPage() {
         </div>
       </div>
 
-      <AiConfigNotice configured={aiConfigured} mode={aiMode} />
-
       {emergencyBanner && (
         <DisclaimerBanner
           variant="emergency"
@@ -225,11 +219,10 @@ export function ChatbotPage() {
               {sessions.map((s) => (
                 <div
                   key={s.id}
-                  className={`group flex items-center justify-between gap-2 rounded-xl border p-2.5 transition-colors ${
-                    activeSessionId === s.id
+                  className={`group flex items-center justify-between gap-2 rounded-xl border p-2.5 transition-colors ${activeSessionId === s.id
                       ? "border-medical-blue bg-blue-50/70"
                       : "border-transparent hover:bg-slate-50"
-                  }`}
+                    }`}
                 >
                   <button
                     type="button"
@@ -300,11 +293,10 @@ export function ChatbotPage() {
                       </div>
                     )}
                     <div
-                      className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
-                        isUser
+                      className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${isUser
                           ? "bg-medical-blue text-white"
                           : "border border-slate-200 bg-slate-50/80 text-slate-800"
-                      }`}
+                        }`}
                     >
                       {msg.emergency_flagged && (
                         <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-red-600">

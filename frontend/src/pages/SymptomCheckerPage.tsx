@@ -1,6 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, Download, History, Languages, Loader2, Stethoscope } from "lucide-react";
-import { AiConfigNotice } from "@/components/AiConfigNotice";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,25 +24,22 @@ export function SymptomCheckerPage() {
   const [additionalSymptoms, setAdditionalSymptoms] = useState("");
   const [relevantContext, setRelevantContext] = useState("");
 
-  const [aiConfigured, setAiConfigured] = useState(true);
-  const [aiMode, setAiMode] = useState<"cloud_ai" | "ollama_local" | "built_in_offline" | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SymptomCheckResult | null>(null);
   const [history, setHistory] = useState<ActivityItem[]>([]);
 
-  const loadHistoryAndHealth = () => {
-    Promise.all([api.getSymptomHistory(), api.health()])
-      .then(([hist, health]) => {
+  const loadHistory = () => {
+    api
+      .getSymptomHistory()
+      .then((hist) => {
         setHistory(hist);
-        setAiConfigured(health.ai_configured);
-        setAiMode(health.ai_mode);
       })
-      .catch(() => {});
+      .catch(() => { });
   };
 
   useEffect(() => {
-    loadHistoryAndHealth();
+    loadHistory();
   }, []);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -77,7 +73,7 @@ export function SymptomCheckerPage() {
         language,
       });
       setResult(res);
-      loadHistoryAndHealth();
+      loadHistory();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to analyze symptom information.");
     } finally {
@@ -109,8 +105,6 @@ export function SymptomCheckerPage() {
         </h1>
         <p className="mt-1 text-sm text-slate-600">{t("sym.sub")}</p>
       </div>
-
-      <AiConfigNotice configured={aiConfigured} mode={aiMode} />
 
       <div className="grid gap-6 lg:grid-cols-12">
         <Card className="lg:col-span-5">
@@ -329,10 +323,10 @@ export function SymptomCheckerPage() {
                                 ...result.questions_for_doctor.map((q, idx) => `${idx + 1}. ${q}`),
                                 ...(showBilingualQuestions && result.questions_for_doctor_en?.length
                                   ? [
-                                      "",
-                                      "English Reference:",
-                                      ...result.questions_for_doctor_en.map((q, idx) => `${idx + 1}. ${q}`),
-                                    ]
+                                    "",
+                                    "English Reference:",
+                                    ...result.questions_for_doctor_en.map((q, idx) => `${idx + 1}. ${q}`),
+                                  ]
                                   : []),
                                 "",
                                 result.disclaimer,

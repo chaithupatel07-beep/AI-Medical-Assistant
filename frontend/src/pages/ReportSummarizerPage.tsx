@@ -1,6 +1,5 @@
 import { DragEvent, useEffect, useState } from "react";
 import { Download, FileText, Loader2, Sparkles, Trash2, UploadCloud } from "lucide-react";
-import { AiConfigNotice } from "@/components/AiConfigNotice";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,8 +24,6 @@ export function ReportSummarizerPage() {
   const { language, t } = useLanguage();
   const [reports, setReports] = useState<MedicalReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<MedicalReport | null>(null);
-  const [aiConfigured, setAiConfigured] = useState(true);
-  const [aiMode, setAiMode] = useState<"cloud_ai" | "ollama_local" | "built_in_offline" | undefined>(undefined);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -38,11 +35,10 @@ export function ReportSummarizerPage() {
   const { blobUrl, loading: previewLoading } = useBlobUrl(previewPath);
 
   useEffect(() => {
-    Promise.all([api.listReports(), api.health()])
-      .then(([list, health]) => {
+    api
+      .listReports()
+      .then((list) => {
         setReports(list);
-        setAiConfigured(health.ai_configured);
-        setAiMode(health.ai_mode);
         if (list.length > 0) setSelectedReport(list[0]);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load reports."))
@@ -122,8 +118,6 @@ export function ReportSummarizerPage() {
         </h1>
         <p className="mt-1 text-sm text-slate-600">{t("rep.sub")}</p>
       </div>
-
-      <AiConfigNotice configured={aiConfigured} mode={aiMode} />
 
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

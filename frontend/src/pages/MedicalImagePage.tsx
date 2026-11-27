@@ -1,6 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
 import { AlertTriangle, Eye, Image as ImageIcon, Loader2, Trash2, UploadCloud } from "lucide-react";
-import { AiConfigNotice } from "@/components/AiConfigNotice";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,8 +19,6 @@ export function MedicalImagePage() {
   const [selectedImage, setSelectedImage] = useState<MedicalImage | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [contextText, setContextText] = useState("");
-  const [aiConfigured, setAiConfigured] = useState(true);
-  const [aiMode, setAiMode] = useState<"cloud_ai" | "ollama_local" | "built_in_offline" | undefined>(undefined);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [analyzing, setAnalyzing] = useState(false);
@@ -32,11 +29,10 @@ export function MedicalImagePage() {
   const { blobUrl, loading: previewLoading } = useBlobUrl(previewPath);
 
   useEffect(() => {
-    Promise.all([api.listImages(), api.health()])
-      .then(([list, health]) => {
+    api
+      .listImages()
+      .then((list) => {
         setImages(list);
-        setAiConfigured(health.ai_configured);
-        setAiMode(health.ai_mode);
         if (list.length > 0) setSelectedImage(list[0]);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load images."))
@@ -107,8 +103,6 @@ export function MedicalImagePage() {
         </h1>
         <p className="mt-1 text-sm text-slate-600">{t("img.sub")}</p>
       </div>
-
-      <AiConfigNotice configured={aiConfigured} mode={aiMode} />
 
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

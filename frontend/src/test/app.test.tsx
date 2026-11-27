@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
-import { AiConfigNotice } from "@/components/AiConfigNotice";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -64,17 +63,9 @@ describe("AI Medical Assistant Frontend", () => {
     });
   });
 
-  it("toggles light and dark theme class and shows offline mode info notice", () => {
+  it("toggles light and dark theme class cleanly", () => {
     document.documentElement.classList.remove("dark");
-    renderWithProviders(
-      <>
-        <ThemeToggle />
-        <AiConfigNotice configured={false} mode="built_in_offline" />
-      </>
-    );
-    expect(
-      screen.getByText(/Built-in Offline Educational Mode Active/i)
-    ).toBeInTheDocument();
+    renderWithProviders(<ThemeToggle />);
 
     fireEvent.click(screen.getByRole("button", { name: /Switch to dark mode/i }));
     expect(document.documentElement.classList.contains("dark")).toBe(true);
