@@ -44,6 +44,12 @@ export function App() {
                 </Route>
 
                 <Route element={<ProtectedRoute />}>
+                  <Route element={<DashboardLayout />}>
+                    <Route path="/chat" element={<ChatbotPage />} />
+                    <Route path="/symptoms" element={<SymptomCheckerPage />} />
+                    <Route path="/reports" element={<ReportSummarizerPage />} />
+                    <Route path="/image-analysis" element={<MedicalImagePage />} />
+                  </Route>
                   <Route path="/dashboard" element={<DashboardLayout />}>
                     <Route index element={<DashboardPage />} />
                     <Route path="chat" element={<ChatbotPage />} />

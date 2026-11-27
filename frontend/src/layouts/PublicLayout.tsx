@@ -144,7 +144,8 @@ export function PublicLayout() {
           </div>
         </div>
         <div className="mx-auto mt-8 max-w-7xl border-t border-slate-100 px-4 pt-6 text-center text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:px-6 lg:px-8">
-          © {new Date().getFullYear()} {t("footer.copyright")}
+          <p className="font-medium text-slate-600 dark:text-slate-300">{t("footer.compliance")}</p>
+          <p className="mt-1">© {new Date().getFullYear()} {t("footer.copyright")}</p>
         </div>
       </footer>
     </div>

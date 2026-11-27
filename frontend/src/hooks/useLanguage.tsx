@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import i18n from "@/i18n/i18n";
 import { TRANSLATIONS } from "@/i18n/translations";
 import { LanguageCode, normalizeLanguage } from "@/i18n/types";
 import { api } from "@/services/api";
@@ -31,6 +32,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = language;
+    if (i18n.language !== language) {
+      void i18n.changeLanguage(language);
+    }
   }, [language]);
 
   const setLanguage = useCallback(

@@ -424,10 +424,13 @@ def test_offline_symptoms_report_image_and_v1_auth():
                 "main_symptom": "fever and headache",
                 "duration": "2 days",
                 "severity": "moderate",
+                "severity_score": 6,
             },
         )
         assert sym.status_code == 200
         assert sym.json()["ai_model"] == "built-in-rules-engine"
+        assert sym.json()["severity_score"] == 6
+        assert len(sym.json()["questions_for_doctor_en"]) >= 1
         assert len(sym.json()["possible_explanations"]) >= 1
 
         pdf_bytes = _make_minimal_pdf_bytes()

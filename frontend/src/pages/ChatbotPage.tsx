@@ -362,7 +362,9 @@ export function ChatbotPage() {
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </form>
-            <p className="mt-2 text-[11px] text-slate-500">{t("chat.footerNote")}</p>
+            <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+              {t("chat.footerNote")} · {t("footer.compliance")}
+            </p>
           </div>
         </Card>
       </div>

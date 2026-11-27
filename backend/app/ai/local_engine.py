@@ -262,14 +262,16 @@ def generate_rule_based_symptom_guidance(
     lang = normalize_language(language)
     symptom = str(payload.get("main_symptom", "")).strip()
     severity = str(payload.get("severity", "mild")).lower()
+    severity_score = payload.get("severity_score")
+    severity_display = f"{severity} ({severity_score}/10)" if severity_score else severity
     duration = str(payload.get("duration", "")).strip()
     age = payload.get("age")
 
     text_map = {
         "en": {
             "overview": (
-                f"Educational summary (Offline Rules Engine) for age {age} reporting '{symptom}' "
-                f"({severity} severity, duration: {duration}). This is general educational context, not a medical diagnosis."
+                f"Educational summary (Offline Rules Engine, aligned with MedlinePlus/CDC/WHO guidance) for age {age} reporting '{symptom}' "
+                f"({severity_display} severity, duration: {duration}). This is general educational context, not a medical diagnosis."
             ),
             "exp1_t": "Common self-limiting or lifestyle-related contributors (possibility)",
             "exp1_d": "Everyday factors such as viral exposure, fatigue, dehydration, muscle strain, or sleep disruption commonly contribute to mild-to-moderate symptoms.",
@@ -359,6 +361,12 @@ def generate_rule_based_symptom_guidance(
         "warning_signs": text_map["warnings"],
         "when_to_consult_doctor": text_map["when"],
         "questions_for_doctor": text_map["questions"],
+        "questions_for_doctor_en": [
+            "What are the most likely non-serious vs. concerning explanations for these symptoms?",
+            "Are any basic exams or lab tests recommended?",
+            "Which warning signs mean I should return for urgent care?",
+        ],
+        "severity_score": severity_score,
         "emergency_detected": emergency_detected,
         "emergency_reasons": emergency_reasons,
         "disclaimer": get_disclaimer("general", lang),

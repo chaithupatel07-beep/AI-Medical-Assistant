@@ -43,7 +43,7 @@ CHAT_SYSTEM_PROMPT = """You are AI Medical Assistant, a careful, empathetic, edu
 STRICT SAFETY & CLINICAL RULES:
 1. Provide GENERAL HEALTH EDUCATION only. Never diagnose any condition or prescribe any medication or dosage.
 2. Never present yourself as a doctor or a replacement for professional medical care.
-3. Explain medical terminology in simple, clear English.
+3. Explain medical terminology in simple, clear language and cite trusted public health sources (MedlinePlus, CDC, or WHO) when sharing general health guidance.
 4. Explain common possibilities neutrally using phrases like "may be associated with" or "common explanations include", never definitive diagnostic statements.
 5. Clearly state when professional medical evaluation is appropriate.
 6. If emergency warning signs are mentioned (chest pain, severe shortness of breath, stroke symptoms, severe bleeding, suicidal thoughts, anaphylaxis), IMMEDIATELY advise calling local emergency services or going to the nearest emergency room.
@@ -55,7 +55,7 @@ SYMPTOM_SYSTEM_PROMPT = """You are an educational healthcare information assista
 STRICT RULES:
 - Do NOT diagnose any disease or condition.
 - Do NOT prescribe or recommend specific prescription medications or dosages.
-- Clearly label possible explanations as general educational possibilities, NOT diagnoses.
+- Clearly label possible explanations as general educational possibilities grounded in MedlinePlus, CDC, and WHO guidance, NOT diagnoses.
 - Highlight warning signs / red flags and when to seek urgent or emergency care.
 
 Return ONLY valid JSON matching this exact schema:
@@ -67,14 +67,15 @@ Return ONLY valid JSON matching this exact schema:
   "recommended_next_steps": ["string"],
   "warning_signs": ["string"],
   "when_to_consult_doctor": "string",
-  "questions_for_doctor": ["string"]
+  "questions_for_doctor": ["string"],
+  "questions_for_doctor_en": ["string (same questions in English for clinician visits)"]
 }"""
 
 REPORT_SUMMARY_SYSTEM_PROMPT = """You are a medical report educational assistant helping a non-medical reader understand a laboratory or clinical report.
 
 CRITICAL ACCURACY & SAFETY RULES:
 1. Use ONLY the values, units, and reference ranges actually present in the supplied report text.
-2. NEVER invent, guess, or fabricate laboratory reference ranges or test values. If a test has no reference range printed in the report, set "reference_range" to "Not specified in report" and "status" to "unknown".
+2. NEVER invent, guess, or fabricate laboratory reference ranges or test values. If a test has no reference range printed in the report, set "reference_range" to "Not specified in report" and "status" to "unknown", and optionally note typical adult MedlinePlus educational guidance in the "explanation" field.
 3. Only classify "status" as "high", "low", or "normal" when a reference range is explicitly supplied in the report text and the comparison is unambiguous.
 4. Do NOT diagnose conditions or prescribe treatments.
 5. Explain medical terms in simple English.
@@ -278,10 +279,13 @@ def _normalize_symptom_payload(
         if isinstance(explanations, list)
         else []
     )
-    for list_key in ("recommended_next_steps", "warning_signs", "questions_for_doctor"):
+    for list_key in ("recommended_next_steps", "warning_signs", "questions_for_doctor", "questions_for_doctor_en"):
         val = parsed.get(list_key)
         parsed[list_key] = [str(x) for x in val] if isinstance(val, list) else []
+    if not parsed["questions_for_doctor_en"]:
+        parsed["questions_for_doctor_en"] = list(parsed["questions_for_doctor"])
     parsed["when_to_consult_doctor"] = str(parsed.get("when_to_consult_doctor") or "")
+    parsed["severity_score"] = payload.get("severity_score")
     parsed["emergency_detected"] = emergency_detected
     parsed["emergency_reasons"] = emergency_reasons
     if emergency_detected:
@@ -308,7 +312,9 @@ async def generate_symptom_guidance(
         f"Gender (optional): {payload.get('gender') or 'Not specified'}\n"
         f"Main symptom: {payload['main_symptom']}\n"
         f"Duration: {payload['duration']}\n"
-        f"Self-reported severity: {payload['severity']}\n"
+        f"Self-reported severity: {payload['severity']}"
+        + (f" ({payload['severity_score']}/10)" if payload.get("severity_score") else "")
+        + "\n"
         f"Additional symptoms: {payload.get('additional_symptoms') or 'None reported'}\n"
         f"Relevant context: {payload.get('relevant_context') or 'None provided'}\n"
     )

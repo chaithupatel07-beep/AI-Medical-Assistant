@@ -57,6 +57,7 @@ class SymptomCheckRequest(BaseModel):
     main_symptom: str = Field(..., min_length=2, max_length=300)
     duration: str = Field(..., min_length=1, max_length=120)
     severity: Literal["mild", "moderate", "severe"]
+    severity_score: Optional[int] = Field(None, ge=1, le=10)
     additional_symptoms: Optional[str] = Field(None, max_length=1500)
     relevant_context: Optional[str] = Field(None, max_length=1500)
     language: LanguageCode = "en"
@@ -75,6 +76,8 @@ class SymptomCheckResponse(BaseModel):
     warning_signs: List[str]
     when_to_consult_doctor: str
     questions_for_doctor: List[str]
+    questions_for_doctor_en: List[str] = []
+    severity_score: Optional[int] = None
     emergency_detected: bool
     emergency_reasons: List[str] = []
     emergency_banner: Optional[str] = None

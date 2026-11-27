@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, History, Loader2, Stethoscope } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, History, Languages, Loader2, Stethoscope } from "lucide-react";
 import { AiConfigNotice } from "@/components/AiConfigNotice";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,8 @@ export function SymptomCheckerPage() {
   const [mainSymptom, setMainSymptom] = useState("");
   const [duration, setDuration] = useState("");
   const [severity, setSeverity] = useState<"mild" | "moderate" | "severe">("mild");
+  const [severityScore, setSeverityScore] = useState<number>(3);
+  const [showBilingualQuestions, setShowBilingualQuestions] = useState(false);
   const [additionalSymptoms, setAdditionalSymptoms] = useState("");
   const [relevantContext, setRelevantContext] = useState("");
 
@@ -69,6 +71,7 @@ export function SymptomCheckerPage() {
         main_symptom: mainSymptom.trim(),
         duration: duration.trim(),
         severity,
+        severity_score: severityScore,
         additional_symptoms: additionalSymptoms.trim() || undefined,
         relevant_context: relevantContext.trim() || undefined,
         language,
@@ -171,14 +174,38 @@ export function SymptomCheckerPage() {
                   <select
                     id="sym-severity"
                     value={severity}
-                    onChange={(e) => setSeverity(e.target.value as "mild" | "moderate" | "severe")}
-                    className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical-blue"
+                    onChange={(e) => {
+                      const val = e.target.value as "mild" | "moderate" | "severe";
+                      setSeverity(val);
+                      setSeverityScore(val === "mild" ? 3 : val === "moderate" ? 6 : 9);
+                    }}
+                    className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-medical-blue dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                   >
                     <option value="mild">{t("sym.mild")}</option>
                     <option value="moderate">{t("sym.moderate")}</option>
                     <option value="severe">{t("sym.severe")}</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <Label htmlFor="sym-score">{t("sym.severityScale")}</Label>
+                  <span className="font-semibold text-medical-blue">{severityScore} / 10</span>
+                </div>
+                <input
+                  id="sym-score"
+                  type="range"
+                  min={1}
+                  max={10}
+                  value={severityScore}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setSeverityScore(next);
+                    setSeverity(next <= 3 ? "mild" : next <= 7 ? "moderate" : "severe");
+                  }}
+                  className="h-2 w-full cursor-pointer accent-medical-blue"
+                />
               </div>
 
               <div className="space-y-1.5">
@@ -277,11 +304,62 @@ export function SymptomCheckerPage() {
                   </div>
 
                   {result.questions_for_doctor.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-slate-900">{t("sym.questions")}</h4>
-                      <ul className="mt-1.5 list-disc space-y-1 pl-5">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h4 className="font-semibold text-slate-900 dark:text-slate-100">{t("sym.questions")}</h4>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {language !== "en" && (result.questions_for_doctor_en?.length ?? 0) > 0 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setShowBilingualQuestions((prev) => !prev)}
+                            >
+                              <Languages className="h-3.5 w-3.5" /> {t("sym.bilingualBtn")}
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const lines = [
+                                "AI Medical Assistant — Questions to Ask Your Doctor",
+                                "--------------------------------------------------",
+                                ...result.questions_for_doctor.map((q, idx) => `${idx + 1}. ${q}`),
+                                ...(showBilingualQuestions && result.questions_for_doctor_en?.length
+                                  ? [
+                                      "",
+                                      "English Reference:",
+                                      ...result.questions_for_doctor_en.map((q, idx) => `${idx + 1}. ${q}`),
+                                    ]
+                                  : []),
+                                "",
+                                result.disclaimer,
+                              ];
+                              const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = "questions-for-doctor.txt";
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            }}
+                          >
+                            <Download className="h-3.5 w-3.5" /> {t("sym.exportQuestions")}
+                          </Button>
+                        </div>
+                      </div>
+                      <ul className="list-disc space-y-1.5 pl-5">
                         {result.questions_for_doctor.map((q, idx) => (
-                          <li key={idx}>{q}</li>
+                          <li key={idx}>
+                            <span>{q}</span>
+                            {showBilingualQuestions && result.questions_for_doctor_en?.[idx] && (
+                              <span className="block text-xs text-slate-500">
+                                ({result.questions_for_doctor_en[idx]})
+                              </span>
+                            )}
+                          </li>
                         ))}
                       </ul>
                     </div>

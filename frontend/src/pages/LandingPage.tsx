@@ -155,13 +155,36 @@ export function LandingPage() {
           </Button>
         </div>
 
-        <Card id="safety" className="border-blue-200 bg-gradient-to-br from-white to-blue-50/60 p-6">
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold text-slate-900">{t("landing.safetyCardTitle")}</h3>
-            <DisclaimerBanner />
-            <p className="text-sm leading-relaxed text-slate-600">{t("landing.safetyCardDesc")}</p>
-          </div>
-        </Card>
+        <div className="space-y-4">
+          <Card id="safety" className="border-blue-200 bg-gradient-to-br from-white to-blue-50/60 p-6 dark:border-blue-900 dark:from-slate-900 dark:to-slate-800/80">
+            <div className="space-y-4">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">{t("landing.safetyCardTitle")}</h3>
+              <DisclaimerBanner />
+              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">{t("landing.safetyCardDesc")}</p>
+            </div>
+          </Card>
+
+          <Card id="privacy" className="border-cyan-200/80 bg-white p-6 dark:border-cyan-900/60 dark:bg-slate-900">
+            <div className="mb-3 flex items-center gap-2">
+              <Lock className="h-5 w-5 text-medical-cyan" />
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t("landing.privacyTitle")}</h3>
+            </div>
+            <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-medical-blue" />
+                <span>{t("landing.privacyItem1")}</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-medical-blue" />
+                <span>{t("landing.privacyItem2")}</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-medical-blue" />
+                <span>{t("landing.privacyItem3")}</span>
+              </li>
+            </ul>
+          </Card>
+        </div>
       </section>
 
       <section id="faq" className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">

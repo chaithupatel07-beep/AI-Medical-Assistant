@@ -37,16 +37,17 @@ def _extract_pdf_text_pypdf(raw_bytes: bytes) -> str:
     return "\n\n".join(chunks).strip()
 
 
-def _render_first_pdf_page_png(raw_bytes: bytes) -> bytes | None:
+def _render_pdf_pages_png(raw_bytes: bytes, max_pages: int = 3) -> list[bytes]:
+    pages_png: list[bytes] = []
     try:
         with fitz.open(stream=raw_bytes, filetype="pdf") as doc:
-            if len(doc) == 0:
-                return None
-            pix = doc[0].get_pixmap(dpi=160)
-            return pix.tobytes("png")
+            for page in doc[:max_pages]:
+                pix = page.get_pixmap(dpi=160)
+                pages_png.append(pix.tobytes("png"))
+        return pages_png
     except Exception as exc:
         logger.warning("PyMuPDF page render failed: %s", exc)
-        return None
+        return pages_png
 
 
 def _extract_image_text_tesseract(raw_bytes: bytes) -> str:
@@ -137,12 +138,19 @@ async def extract_report_text(raw_bytes: bytes, mime_type: str) -> Tuple[str, st
         except Exception as exc:
             logger.warning("pypdf extraction failed: %s", exc)
 
-        # Scanned PDF fallback: render page 1 via PyMuPDF and run OCR
-        rendered_png = _render_first_pdf_page_png(raw_bytes)
-        if rendered_png:
-            ocr_text, ocr_method = await _ocr_image_bytes(rendered_png, "image/png")
-            if ocr_text:
-                return ocr_text, f"pymupdf_{ocr_method}"
+        # Scanned PDF fallback: render up to 3 pages via PyMuPDF and run OCR
+        rendered_pages = _render_pdf_pages_png(raw_bytes, max_pages=3)
+        if rendered_pages:
+            chunks = []
+            methods = set()
+            for png_bytes in rendered_pages:
+                ocr_text, ocr_method = await _ocr_image_bytes(png_bytes, "image/png")
+                if ocr_text:
+                    chunks.append(ocr_text)
+                    methods.add(ocr_method)
+            if chunks:
+                primary_method = sorted(methods)[0]
+                return "\n\n".join(chunks), f"pymupdf_{primary_method}"
 
         return "", "pdf_no_embedded_text"
 

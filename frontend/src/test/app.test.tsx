@@ -23,10 +23,11 @@ function renderWithProviders(ui: React.ReactElement) {
 }
 
 describe("AI Medical Assistant Frontend", () => {
-  it("renders landing page hero, services, safety disclaimer, and FAQ", () => {
+  it("renders landing page hero, services, privacy handling card, safety disclaimer, and FAQ", () => {
     renderWithProviders(<LandingPage />);
     expect(screen.getByText(/Smarter with AI/i)).toBeInTheDocument();
     expect(screen.getByText(/AI Medical Chatbot/i)).toBeInTheDocument();
+    expect(screen.getByText(/How Your Data Is Handled/i)).toBeInTheDocument();
     expect(screen.getByText(/Common Questions About AI Medical Assistant/i)).toBeInTheDocument();
     expect(screen.getByText(/Educational Healthcare Information Only/i)).toBeInTheDocument();
   });

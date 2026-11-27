@@ -39,11 +39,16 @@ async def check_symptoms(
         language=lang,
     )
 
+    severity_label = (
+        f"{payload.severity} ({payload.severity_score}/10)"
+        if payload.severity_score is not None
+        else payload.severity
+    )
     activity = log_activity(
         db,
         user_id=current_user.id,
         activity_type="symptom_check",
-        description=f"Checked symptom info: {payload.main_symptom} ({payload.severity}, {payload.duration}).",
+        description=f"Checked symptom info: {payload.main_symptom} ({severity_label}, {payload.duration}).",
         resource_type="symptom_check",
         metadata={
             "request": payload.model_dump(),

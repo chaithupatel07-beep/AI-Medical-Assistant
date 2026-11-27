@@ -81,6 +81,7 @@ export interface SymptomCheckPayload {
   main_symptom: string;
   duration: string;
   severity: "mild" | "moderate" | "severe";
+  severity_score?: number;
   additional_symptoms?: string;
   relevant_context?: string;
 }
@@ -98,6 +99,8 @@ export interface SymptomCheckResult {
   warning_signs: string[];
   when_to_consult_doctor: string;
   questions_for_doctor: string[];
+  questions_for_doctor_en?: string[];
+  severity_score?: number | null;
   emergency_detected: boolean;
   emergency_reasons: string[];
   emergency_banner: string | null;

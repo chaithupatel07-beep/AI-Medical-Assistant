@@ -158,6 +158,9 @@ export function DashboardLayout() {
             <Outlet />
           </div>
         </main>
+        <footer className="border-t border-blue-100/80 bg-white/80 px-4 py-3 text-center text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-400">
+          {t("footer.compliance")}
+        </footer>
       </div>
     </div>
   );
